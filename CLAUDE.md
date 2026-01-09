@@ -26,6 +26,7 @@ Also produce an evidence rationale internally.
 - **Docker**: CUDA 12.8 + PyTorch nightly (cu128) for RTX 5060 Blackwell support
 - **Chunk size**: 400 tokens ; overlap: 100 front + 100 back (200 total overlap)
 - **Embedding model**: nomic-ai/nomic-embed-text-v1.5 (768-dim, matryoshka support)
+- **Reasoning LLM**: meta-llama/Llama-3.1-8B-Instruct (for claim extraction & verification)
 - #claims per backstory: ___
 - Contradiction policy: (hard-kill / weighted / threshold) -> ___
 - Retriever: (top-k=___) ; rerank: (none / LLM / cross-encoder)
@@ -113,6 +114,7 @@ Dataset/
 - **PyTorch**: 2.11.0.dev+cu128 (Blackwell support)
 - **CUDA**: 12.8
 - **Embedding**: nomic-ai/nomic-embed-text-v1.5
+- **LLM**: meta-llama/Llama-3.1-8B-Instruct (via transformers + accelerate)
 
 ---
 

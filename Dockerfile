@@ -16,7 +16,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m pip install --upgrade pip && \
     python -m pip install pathway pandas pytest numpy && \
     python -m pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128 && \
-    python -m pip install sentence-transformers einops
+    python -m pip install sentence-transformers einops && \
+    python -m pip install transformers accelerate
 
 # Copy project files
 COPY . .

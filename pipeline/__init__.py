@@ -9,6 +9,20 @@ from .embedder import (
     EmbedderConfig,
     TaskType
 )
+from .verifier import (
+    VerificationPipeline,
+    VerifierConfig,
+    ClaimExtractor,
+    QueryGenerator,
+    HybridRetriever,
+    BM25Retriever,
+    Reranker,
+    ClaimVerifier,
+    Aggregator,
+    Evaluator,
+    LlamaLLM,
+    VerificationResult
+)
 
 __all__ = [
     # Loader
@@ -26,4 +40,17 @@ __all__ = [
     'PathwayVectorIndex',
     'EmbedderConfig',
     'TaskType',
+    # Verifier
+    'VerificationPipeline',
+    'VerifierConfig',
+    'ClaimExtractor',
+    'QueryGenerator',
+    'HybridRetriever',
+    'BM25Retriever',
+    'Reranker',
+    'ClaimVerifier',
+    'Aggregator',
+    'Evaluator',
+    'LlamaLLM',
+    'VerificationResult',
 ]

@@ -109,6 +109,21 @@ Dataset/
 - `ChunkEmbedder` - Embeds chunks, provides search()
 - `PathwayVectorIndex` - Pathway table with embeddings
 
+**verifier.py** - Full verification pipeline ✅
+- `LlamaLLM` - Llama wrapper with batching + memory optimization
+- `ClaimExtractor` - Extract atomic facts from backstories
+- `QueryGenerator` - Generate search queries per claim
+- `BM25Retriever` - Sparse lexical search
+- `HybridRetriever` - Combines BM25 + vector search with score fusion
+- `Reranker` - LLM-based relevance reranking
+- `ClaimVerifier` - Verify claims against evidence
+- `Aggregator` - Combine verdicts into final prediction
+- `VerificationPipeline` - Full end-to-end pipeline
+- `Evaluator` - Evaluate accuracy on labeled data
+
+**run_eval.py** - Evaluation runner
+- `python -m pipeline.run_eval --max-samples 10 --verbose`
+
 ### Tech Stack
 - **Pathway**: 0.28.0 (real tables, not stubs)
 - **PyTorch**: 2.11.0.dev+cu128 (Blackwell support)
@@ -118,15 +133,50 @@ Dataset/
 
 ---
 
-## TODO (Next Steps)
-- [ ] Implement claim extraction from backstories
-- [ ] Add retrieval pipeline (top-k per claim)
-- [ ] Add verification module (NLI or LLM-based)
-- [ ] Add aggregation logic
-- [ ] Create `pipeline/run.py` entry point
-- [ ] End-to-end smoke test
+## Performance & Optimization Notes
 
-## General info
-- **ALWAYS use Docker** for all Pathway operations - use `docker-compose run --rm pipeline` prefix for all commands
-- Generally make all changes in /pipeline or /tests
-- Test immediately after implementing any feature: `docker-compose run --rm pipeline python -m pytest tests/ -v`
+### Docker Build Speed
+- **Problem**: Full rebuild takes ~8+ hours (downloads PyTorch nightly + all packages)
+- **Solution**: Layer caching with `requirements.txt`
+  - requirements.txt is copied first and cached
+  - Subsequent builds only rebuild if requirements change
+  - Code changes don't trigger full package reinstall
+- **Tip**: Use `docker-compose build --no-cache` only when absolutely needed
+
+### GPU Memory (8GB VRAM Analysis)
+- **Llama-3.1-8B @ float16**: ~16GB → needs offloading to shared memory
+- **With device_map="auto"**: Automatically splits between GPU + CPU RAM
+- **8-bit quantization**: Reduces to ~8GB (enable with `use_8bit=True`)
+- **Current setup**: Works with 8GB dedicated + 16GB shared memory
+- **Recommendation**: 8-bit quantization recommended for faster inference
+
+### Pipeline Efficiency
+- **Batching**: Uses HF `datasets` library for batched LLM inference
+- **Parallelization**: Retrieval (BM25 + vector) runs in parallel threads
+- **LLM bottleneck**: LLM calls must be sequential (single GPU)
+- **Reranking**: Most expensive step (LLM call per chunk)
+- **Tip**: Reduce `top_k_per_query` or skip reranking for speed
+
+### Config Options (VerifierConfig)
+```python
+VerifierConfig(
+    llm_batch_size=4,       # Increase for faster batching
+    use_8bit=True,          # Enable 8-bit quantization (saves ~50% VRAM)
+    parallel_claims=True,   # Parallel retrieval (CPU-bound)
+    max_workers=2,          # Thread workers for retrieval
+    top_k_per_query=5,      # Reduce for speed, increase for recall
+    top_k_reranked=3,       # Chunks after reranking
+)
+```
+
+---
+
+## TODO (Next Steps)
+- [x] Implement claim extraction from backstories ✅
+- [x] Add retrieval pipeline (top-k per claim) ✅
+- [x] Add verification module (NLI or LLM-based) ✅
+- [x] Add aggregation logic ✅
+- [x] Create `pipeline/run_eval.py` evaluation runner ✅
+- [ ] Run end-to-end smoke test on 2-5 samples
+- [ ] Tune aggregation thresholds based on results
+- [ ] Create final `pipeline/run.py` entry point for submission

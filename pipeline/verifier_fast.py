@@ -5,8 +5,9 @@ Uses Groq API for fast, free LLM inference.
 Key optimizations:
 1. Groq API - Free, fast cloud inference (~1s per call vs ~120s local)
 2. NO LLM-based reranking (uses score-based fusion instead)
-3. NO separate query generation (uses claim directly)
-4. Improved prompt engineering for better accuracy
+3. Simplified prompts for reliable parsing
+4. Citation-based verification
+5. Parallel claim verification
 """
 
 import re
@@ -16,6 +17,7 @@ import numpy as np
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
 
@@ -27,37 +29,32 @@ import time
 class FastVerifierConfig:
     """Configuration for the fast verification pipeline."""
     # LLM settings (Groq API)
-    llm_model: str = "llama-3.1-8b-instant"  # Groq model name
-    llm_temperature: float = 0.0  # Deterministic for consistency
-    llm_max_tokens: int = 512
+    llm_model: str = "llama-3.1-8b-instant"
+    llm_temperature: float = 0.0
+    llm_max_tokens: int = 800
     
     # Retrieval settings
-    top_k_retrieval: int = 15     # More chunks for better recall
-    top_k_final: int = 5          # Final chunks for verification
-    bm25_weight: float = 0.3      # Slightly lower - semantic often better
-    vector_weight: float = 0.7    # Higher weight for semantic search
+    top_k_retrieval: int = 15
+    top_k_final: int = 8  # More evidence chunks
+    bm25_weight: float = 0.4
+    vector_weight: float = 0.6
     
     # Verification settings
-    max_claims: int = 5           # 5 claims per backstory
+    max_claims: int = 5
     
     # Retry settings
-    max_retries: int = 2          # Retry on API errors
+    max_retries: int = 3
 
 
 DEFAULT_FAST_CONFIG = FastVerifierConfig()
 
 
 # ============================================================================
-# Groq LLM Wrapper (Fast, Free API) - with retry logic
+# Groq LLM Wrapper
 # ============================================================================
 
 class GroqLLM:
-    """
-    LLM wrapper using Groq API - fast and free.
-    
-    Get your API key at: https://console.groq.com/keys
-    Set it as environment variable: GROQ_API_KEY
-    """
+    """LLM wrapper using Groq API."""
     
     def __init__(self, config: Optional[FastVerifierConfig] = None):
         self.config = config or DEFAULT_FAST_CONFIG
@@ -93,7 +90,6 @@ class GroqLLM:
         
         max_tok = max_tokens or self.config.llm_max_tokens
         
-        # Build messages
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -101,7 +97,6 @@ class GroqLLM:
         
         result = "ERROR"
         
-        # Retry loop
         for attempt in range(self.config.max_retries + 1):
             try:
                 response = client.chat.completions.create(
@@ -118,8 +113,7 @@ class GroqLLM:
             except Exception as e:
                 self.errors += 1
                 if attempt < self.config.max_retries:
-                    print(f"Groq API error (attempt {attempt + 1}): {e}, retrying...")
-                    time.sleep(1)  # Brief pause before retry
+                    time.sleep(1)
                 else:
                     print(f"Groq API error after {self.config.max_retries + 1} attempts: {e}")
                     result = "ERROR"
@@ -130,7 +124,6 @@ class GroqLLM:
         return result
     
     def get_stats(self) -> Dict[str, Any]:
-        """Get LLM call statistics."""
         return {
             'call_count': self.call_count,
             'total_time': self.total_time,
@@ -140,40 +133,46 @@ class GroqLLM:
 
 
 # ============================================================================
-# Improved Claim Extractor with better prompting
+# Claim Extractor - Focus on verifiable facts
 # ============================================================================
 
 class FastClaimExtractor:
-    """Extract claims with a single LLM call using structured prompting."""
+    """Extract specific, verifiable claims from backstories."""
     
-    SYSTEM_PROMPT = """You are extracting verifiable facts about a CHARACTER from their backstory.
+    SYSTEM_PROMPT = """You extract SPECIFIC VERIFIABLE FACTS from character backstories.
 
-ONLY extract facts about the CHARACTER mentioned, including:
-- Events in their life
-- Their relationships with other characters
-- Their actions and decisions
-- Dates/years related to their life events
-- Places they lived, visited, or were imprisoned
+Focus on facts that can be CHECKED against the book:
+- Specific DATES, YEARS, or TIME PERIODS
+- NAMES of people, places, ships, institutions
+- RELATIONSHIPS (who is related to whom, how)
+- SPECIFIC EVENTS (what happened, in what order)
+- LOCATIONS where events occurred
+- NUMBERS, QUANTITIES, DURATIONS
 
-Do NOT extract:
-- Facts about the novel itself (publication date, author, etc.)
-- General plot summary
-- Facts about other characters unless related to this character"""
+DO NOT extract:
+- Vague emotional states
+- General character descriptions
+- Opinions or interpretations
+- Meta-information about the novel itself"""
 
-    USER_PROMPT = """Extract {max_claims} specific facts about {character} from this backstory.
+    USER_PROMPT = """Extract {max_claims} SPECIFIC VERIFIABLE FACTS about {character} from this backstory.
 
 BACKSTORY:
 {backstory}
 
-Extract ONLY facts about {character}'s life - their actions, relationships, events, dates, locations.
-Do NOT extract meta-facts about the novel itself.
+For each fact, focus on:
+- Dates/years mentioned
+- Names of other people
+- Specific events and their outcomes
+- Locations and places
+- Relationships between characters
 
-Return exactly {max_claims} numbered facts about {character}:
-1. [Fact about {character}]
-2. [Another fact about {character}]
-...
-
-Facts about {character}:"""
+Return exactly {max_claims} numbered facts. Each fact should be ONE specific, checkable claim:
+1.
+2.
+3.
+4.
+5."""
 
     def __init__(self, llm: GroqLLM, config: Optional[FastVerifierConfig] = None):
         self.llm = llm
@@ -183,14 +182,13 @@ Facts about {character}:"""
         """Extract claims from backstory."""
         prompt = self.USER_PROMPT.format(
             character=character,
-            book_name=book_name,
-            backstory=backstory[:2500],  # Slightly more context
+            backstory=backstory[:3000],
             max_claims=self.config.max_claims
         )
         
         response = self.llm.generate(
             prompt, 
-            max_tokens=600,
+            max_tokens=500,
             system_prompt=self.SYSTEM_PROMPT
         )
         
@@ -198,19 +196,20 @@ Facts about {character}:"""
         claims = []
         for line in response.split('\n'):
             line = line.strip()
-            # Match "1. claim" or "1) claim" or "1: claim"
-            match = re.match(r'^[\d]+[.\):]\s*(.+)', line)
+            # Match various numbering formats
+            match = re.match(r'^[\d]+[.\):\-]\s*(.+)', line)
             if match:
                 claim = match.group(1).strip()
-                # Filter very short or meta claims
-                if len(claim) > 15 and not claim.lower().startswith(('the claim', 'this claim', 'claim:')):
+                # Filter out empty or meta claims
+                if len(claim) > 20 and not any(x in claim.lower() for x in 
+                    ['the claim', 'this claim', 'claim:', 'fact:', 'novel', 'book', 'author']):
                     claims.append(claim)
         
         return claims[:self.config.max_claims]
 
 
 # ============================================================================
-# BM25 Retriever (using rank-bm25 library for speed)
+# BM25 Retriever
 # ============================================================================
 
 class FastBM25:
@@ -221,39 +220,27 @@ class FastBM25:
         
         self.chunks = chunks
         self.content_key = content_key
-        
-        # Tokenize corpus with improved tokenization
         self.corpus = [self._tokenize(c[content_key]) for c in chunks]
-        
-        # Build BM25 index
         self.bm25 = BM25Okapi(self.corpus)
     
     def _tokenize(self, text: str) -> List[str]:
-        """Improved tokenization - keeps meaningful tokens."""
-        # Lowercase and extract words (including contractions)
+        """Tokenize text for BM25."""
         tokens = re.findall(r"[a-zA-Z]+(?:'[a-zA-Z]+)?", text.lower())
-        # Filter very short tokens
         return [t for t in tokens if len(t) > 1]
     
     def search(self, query: str, top_k: int = 10) -> List[Tuple[int, float]]:
         """Return (doc_index, score) pairs."""
         query_terms = self._tokenize(query)
-        
         if not query_terms:
             return []
         
-        # Get scores for all documents
         scores = self.bm25.get_scores(query_terms)
-        
-        # Get top-k indices
         top_indices = np.argsort(scores)[::-1][:top_k]
-        
-        # Return (index, score) pairs, filtering zero scores
         return [(int(idx), float(scores[idx])) for idx in top_indices if scores[idx] > 0]
 
 
 # ============================================================================
-# Hybrid Retriever (Fast - No LLM) with improved fusion
+# Hybrid Retriever with RRF
 # ============================================================================
 
 class FastHybridRetriever:
@@ -262,7 +249,7 @@ class FastHybridRetriever:
     def __init__(
         self,
         chunks: List[Dict[str, Any]],
-        embedder,  # ChunkEmbedder
+        embedder,
         config: Optional[FastVerifierConfig] = None,
         content_key: str = "content"
     ):
@@ -271,34 +258,24 @@ class FastHybridRetriever:
         self.config = config or DEFAULT_FAST_CONFIG
         self.content_key = content_key
         self.bm25 = FastBM25(chunks, content_key)
-        
-        # Pre-build chunk index for faster lookup
-        self._chunk_id_to_idx = {
-            c.get('chunk_id', i): i for i, c in enumerate(chunks)
-        }
+        self._chunk_id_to_idx = {c.get('chunk_id', i): i for i, c in enumerate(chunks)}
     
     def search(self, query: str, top_k: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Hybrid search using Reciprocal Rank Fusion (RRF)."""
+        """Hybrid search using RRF."""
         k = top_k or self.config.top_k_retrieval
-        rrf_k = 60  # RRF constant (standard value)
+        rrf_k = 60
         
-        # BM25 search
         bm25_results = self.bm25.search(query, top_k=k * 2)
-        
-        # Vector search
         vector_results = self.embedder.search(query, top_k=k * 2)
         
-        # Build rank maps
         bm25_ranks = {idx: rank for rank, (idx, _) in enumerate(bm25_results)}
         
         vector_ranks = {}
         for rank, r in enumerate(vector_results):
             chunk_id = r.get('chunk_id')
             if chunk_id in self._chunk_id_to_idx:
-                idx = self._chunk_id_to_idx[chunk_id]
-                vector_ranks[idx] = rank
+                vector_ranks[self._chunk_id_to_idx[chunk_id]] = rank
         
-        # Compute RRF scores
         all_indices = set(bm25_ranks.keys()) | set(vector_ranks.keys())
         rrf_scores = {}
         
@@ -310,61 +287,64 @@ class FastHybridRetriever:
                 score += self.config.vector_weight / (rrf_k + vector_ranks[idx])
             rrf_scores[idx] = score
         
-        # Sort by RRF score
         sorted_indices = sorted(rrf_scores.keys(), key=lambda x: rrf_scores[x], reverse=True)
         
-        # Build results
         results = []
         for idx in sorted_indices[:k]:
             chunk = self.chunks[idx].copy()
             chunk['rrf_score'] = rrf_scores[idx]
-            chunk['bm25_rank'] = bm25_ranks.get(idx, -1)
-            chunk['vector_rank'] = vector_ranks.get(idx, -1)
             results.append(chunk)
         
         return results
 
 
 # ============================================================================
-# Improved Claim Verifier with better prompting
+# Claim Verifier with Citation Checking
 # ============================================================================
 
 class FastClaimVerifier:
-    """Verify claims with improved prompting for better accuracy."""
+    """Verify claims with citation-based evidence checking."""
     
-    SYSTEM_PROMPT = """You are a meticulous fact-checker analyzing claims about fictional characters against evidence from their source novel.
+    SYSTEM_PROMPT = """You are a fact-checker verifying claims against book passages.
 
-Your task: Determine if each claim is SUPPORTED, CONTRADICTED, or UNCLEAR based on the evidence.
+Your task: Determine if the CLAIM is SUPPORTED, CONTRADICTED, or UNCLEAR based on the EVIDENCE.
 
-CRITICAL - How to identify CONTRADICTIONS:
-- Dates/times differ (claim says "1815" but evidence shows "1811")
-- Events differ (claim says "escaped" but evidence shows "was captured")
-- Relationships differ (claim says "brother" but evidence shows "cousin")
-- Actions differ (claim says "killed" but evidence shows "saved")
-- Any factual inconsistency between claim and evidence
+CRITICAL RULES FOR DETECTING CONTRADICTIONS:
+1. DATES/TIMES: If claim says "1815" but evidence shows "1811" → CONTRADICTION
+2. NAMES: If claim says "brother" but evidence shows "cousin" → CONTRADICTION  
+3. EVENTS: If claim says "escaped" but evidence shows "captured" → CONTRADICTION
+4. LOCATIONS: If claim says "Paris" but evidence shows "London" → CONTRADICTION
+5. RELATIONSHIPS: If claim says "father" but evidence shows "uncle" → CONTRADICTION
 
-SUPPORTS: Evidence explicitly confirms or matches the claimed facts.
+CRITICAL RULES FOR SUPPORT:
+- Evidence must EXPLICITLY state or strongly imply the claim
+- Just mentioning the same character is NOT support
 
-UNCLEAR: The evidence doesn't mention or address the claim at all.
+UNCLEAR means:
+- Evidence doesn't address this specific claim
+- Information is ambiguous or incomplete
 
-Be AGGRESSIVE in detecting contradictions - if the evidence provides different facts than the claim, that's a CONTRADICTION."""
+OUTPUT FORMAT (you MUST follow this exactly):
+VERDICT: [SUPPORTS/CONTRADICTS/UNCLEAR]
+CONFIDENCE: [0.0-1.0]
+CITATION: [Quote the specific passage that supports your verdict]
+REASONING: [Explain why in 1-2 sentences]"""
 
-    USER_PROMPT = """Verify this claim about {character} from "{book_name}":
+    USER_PROMPT = """CLAIM TO VERIFY:
+"{claim}"
 
-CLAIM: "{claim}"
-
-EVIDENCE FROM BOOK:
+EVIDENCE PASSAGES FROM THE BOOK:
 {evidence}
 
-INSTRUCTIONS:
-1. Look for ANY factual inconsistency between the claim and evidence
-2. Pay attention to: dates, names, locations, relationships, events, outcomes
-3. If evidence shows DIFFERENT facts than the claim → CONTRADICTS
-4. If evidence confirms the claim → SUPPORTS
-5. If evidence doesn't address the claim → UNCLEAR
+Analyze the evidence carefully. Look for:
+- Any FACTUAL CONFLICTS with the claim (different dates, names, events, relationships)
+- Any passages that CONFIRM the claim
+- Whether the evidence actually addresses the claim at all
 
 VERDICT: [SUPPORTS/CONTRADICTS/UNCLEAR]
-REASON: [Brief explanation of why]"""
+CONFIDENCE: [0.0-1.0]
+CITATION: [Quote the relevant passage]
+REASONING: [Why?]"""
 
     def __init__(self, llm: GroqLLM, config: Optional[FastVerifierConfig] = None):
         self.llm = llm
@@ -378,13 +358,14 @@ REASON: [Brief explanation of why]"""
         book_name: str,
         content_key: str = "content"
     ) -> Dict[str, Any]:
-        """Verify a claim against evidence."""
-        # Format evidence with clear labeling
+        """Verify a claim against evidence with citation checking."""
+        
+        # Format evidence with passage numbers for citation
         evidence_parts = []
         for i, e in enumerate(evidence[:self.config.top_k_final]):
-            content = e.get(content_key, '')[:600]  # More context per chunk
+            content = e.get(content_key, '')[:800]
             chapter = e.get('chapter', 'Unknown')
-            evidence_parts.append(f"[Passage {i+1}, {chapter}]:\n{content}")
+            evidence_parts.append(f"[PASSAGE {i+1}] ({chapter}):\n{content}")
         
         evidence_text = "\n\n".join(evidence_parts)
         
@@ -393,85 +374,132 @@ REASON: [Brief explanation of why]"""
                 'claim': claim,
                 'verdict': 'unclear',
                 'confidence': 0.3,
-                'reasoning': 'No evidence found'
+                'reasoning': 'No evidence found',
+                'citation': None
             }
         
         prompt = self.USER_PROMPT.format(
-            character=character,
-            book_name=book_name,
             claim=claim,
             evidence=evidence_text
         )
         
         response = self.llm.generate(
-            prompt, 
-            max_tokens=150,
+            prompt,
+            max_tokens=400,
             system_prompt=self.SYSTEM_PROMPT
         )
         
-        # Parse structured response
-        verdict, confidence, reasoning = self._parse_response(response)
+        # Parse the structured response
+        result = self._parse_response(response)
+        result['claim'] = claim
+        
+        return result
+    
+    def _parse_response(self, response: str) -> Dict[str, Any]:
+        """Parse the LLM response with multiple fallback strategies."""
+        
+        verdict = 'unclear'
+        confidence = 0.5
+        reasoning = ''
+        citation = None
+        
+        # Strategy 1: Look for explicit VERDICT line
+        verdict_match = re.search(r'VERDICT:\s*(SUPPORTS?|CONTRADICTS?|UNCLEAR)', response, re.IGNORECASE)
+        if verdict_match:
+            v = verdict_match.group(1).upper()
+            if 'CONTRADICT' in v:
+                verdict = 'contradicts'
+            elif 'SUPPORT' in v:
+                verdict = 'supports'
+            else:
+                verdict = 'unclear'
+        
+        # Strategy 2: Look for CONFIDENCE
+        conf_match = re.search(r'CONFIDENCE:\s*([\d.]+)', response, re.IGNORECASE)
+        if conf_match:
+            try:
+                confidence = float(conf_match.group(1))
+                confidence = max(0.0, min(1.0, confidence))
+            except ValueError:
+                pass
+        
+        # Strategy 3: Extract CITATION
+        citation_match = re.search(r'CITATION:\s*["\']?(.+?)["\']?\s*(?:REASONING|$)', response, re.IGNORECASE | re.DOTALL)
+        if citation_match:
+            citation = citation_match.group(1).strip()[:300]
+        
+        # Strategy 4: Extract REASONING
+        reasoning_match = re.search(r'REASONING:\s*(.+?)(?:$|\n\n)', response, re.IGNORECASE | re.DOTALL)
+        if reasoning_match:
+            reasoning = reasoning_match.group(1).strip()[:300]
+        
+        # Fallback: Keyword-based detection if no explicit verdict
+        if not verdict_match:
+            response_lower = response.lower()
+            
+            # Strong contradiction indicators
+            contradiction_phrases = [
+                'contradict', 'conflict', 'inconsistent', 'different from',
+                'does not match', 'incorrect', 'wrong', 'false', 'inaccurate',
+                'not true', 'differs from', 'opposite', 'mismatch'
+            ]
+            support_phrases = [
+                'support', 'confirm', 'consistent', 'matches', 'correct',
+                'true', 'accurate', 'aligns', 'agrees with', 'verified'
+            ]
+            
+            contradiction_count = sum(1 for p in contradiction_phrases if p in response_lower)
+            support_count = sum(1 for p in support_phrases if p in response_lower)
+            
+            # Check for negations
+            if 'not contradict' in response_lower or 'no contradiction' in response_lower:
+                contradiction_count = 0
+            if 'not support' in response_lower or 'no support' in response_lower:
+                support_count = 0
+            
+            if contradiction_count > support_count and contradiction_count > 0:
+                verdict = 'contradicts'
+                confidence = 0.6 + (contradiction_count * 0.05)
+            elif support_count > contradiction_count and support_count > 0:
+                verdict = 'supports'
+                confidence = 0.6 + (support_count * 0.05)
+            
+            confidence = min(0.9, confidence)
+        
+        # Boost confidence if citation was provided
+        if citation and len(citation) > 20:
+            confidence = min(1.0, confidence + 0.1)
+        
+        if not reasoning:
+            reasoning = response[:200]
         
         return {
-            'claim': claim,
             'verdict': verdict,
             'confidence': confidence,
-            'reasoning': reasoning
+            'reasoning': reasoning,
+            'citation': citation
         }
-    
-    def _parse_response(self, response: str) -> Tuple[str, float, str]:
-        """Parse the structured LLM response."""
-        response_upper = response.upper()
-        
-        # Look for explicit verdict
-        if 'VERDICT:' in response_upper:
-            verdict_match = re.search(r'VERDICT:\s*(SUPPORTS?|CONTRADICTS?|UNCLEAR)', response_upper)
-            if verdict_match:
-                v = verdict_match.group(1)
-                if 'CONTRADICT' in v:
-                    verdict = 'contradicts'
-                    confidence = 0.85
-                elif 'SUPPORT' in v:
-                    verdict = 'supports'
-                    confidence = 0.85
-                else:
-                    verdict = 'unclear'
-                    confidence = 0.5
-                
-                # Extract reasoning
-                reason_match = re.search(r'REASON:\s*(.+)', response, re.IGNORECASE | re.DOTALL)
-                reasoning = reason_match.group(1).strip()[:200] if reason_match else response[:200]
-                
-                return verdict, confidence, reasoning
-        
-        # Fallback: keyword matching
-        response_lower = response.lower()
-        if 'contradict' in response_lower and 'not contradict' not in response_lower:
-            return 'contradicts', 0.7, response[:200]
-        elif 'support' in response_lower and 'not support' not in response_lower:
-            return 'supports', 0.7, response[:200]
-        else:
-            return 'unclear', 0.5, response[:200]
 
 
 # ============================================================================
-# Improved Aggregator with weighted scoring
+# Aggregator with improved logic
 # ============================================================================
 
 class FastAggregator:
-    """Aggregate verdicts into final prediction with confidence weighting."""
+    """Aggregate verdicts into final prediction."""
     
     def aggregate(self, results: List[Dict[str, Any]]) -> Tuple[int, Dict[str, Any]]:
         """
-        Balanced aggregation:
-        - ANY high-confidence contradiction → predict 0
-        - Multiple contradictions (>=2) → predict 0
-        - Otherwise → predict 1 (give benefit of doubt)
+        Aggregation rules:
+        1. Any high-confidence contradiction (>=0.6) → CONTRADICT
+        2. Multiple contradictions (>=2) → CONTRADICT
+        3. Strong contradiction score vs support score → CONTRADICT
+        4. Otherwise → CONSISTENT
         """
         if not results:
             return 1, {'reason': 'No claims extracted', 'verdicts': []}
         
-        # Calculate weighted scores
+        # Calculate scores
         contradiction_score = 0.0
         support_score = 0.0
         
@@ -488,19 +516,28 @@ class FastAggregator:
         n_supports = verdicts.count('supports')
         n_unclear = verdicts.count('unclear')
         
-        # Decision logic
-        # 1. Any contradiction (conf >= 0.7) → contradict
-        has_contradict = any(
-            r['verdict'] == 'contradicts' and r.get('confidence', 0) >= 0.65
+        # Check for high-confidence contradictions
+        high_conf_contradict = any(
+            r['verdict'] == 'contradicts' and r.get('confidence', 0) >= 0.6
             for r in results
         )
         
-        # 2. Multiple contradictions regardless of confidence → contradict
-        multiple_contradicts = n_contradicts >= 2
+        # Check for contradictions with citations (more reliable)
+        cited_contradict = any(
+            r['verdict'] == 'contradicts' and r.get('citation') and len(r.get('citation', '')) > 20
+            for r in results
+        )
         
-        if has_contradict or multiple_contradicts:
+        # Decision logic
+        if high_conf_contradict or cited_contradict:
             prediction = 0
-            reason = f"Contradiction detected ({n_contradicts} contradictions, {n_supports} supports)"
+            reason = f"High-confidence contradiction found"
+        elif n_contradicts >= 2:
+            prediction = 0
+            reason = f"Multiple contradictions ({n_contradicts})"
+        elif contradiction_score > support_score * 1.2 and n_contradicts >= 1:
+            prediction = 0
+            reason = f"Contradiction score ({contradiction_score:.2f}) > support ({support_score:.2f})"
         else:
             prediction = 1
             reason = f"Consistent ({n_supports} supports, {n_unclear} unclear, {n_contradicts} contradicts)"
@@ -508,28 +545,17 @@ class FastAggregator:
         return prediction, {
             'reason': reason,
             'verdicts': results,
-            'counts': {
-                'contradicts': n_contradicts, 
-                'supports': n_supports, 
-                'unclear': n_unclear
-            },
-            'scores': {
-                'contradiction': contradiction_score,
-                'support': support_score
-            }
+            'counts': {'contradicts': n_contradicts, 'supports': n_supports, 'unclear': n_unclear},
+            'scores': {'contradiction': contradiction_score, 'support': support_score}
         }
 
 
 # ============================================================================
-# Fast Verification Pipeline
+# Verification Pipeline
 # ============================================================================
 
 class FastVerificationPipeline:
-    """
-    Optimized verification pipeline with improved prompts.
-    
-    LLM calls per sample: ~6 (1 extraction + 5 verifications)
-    """
+    """Optimized verification pipeline with parallel processing."""
     
     def __init__(
         self,
@@ -563,14 +589,14 @@ class FastVerificationPipeline:
             print(f"\n{'='*50}")
             print(f"Verifying: {character} ({book_name})")
         
-        # 1. Extract claims (1 LLM call)
+        # 1. Extract claims
         if verbose:
             print("1. Extracting claims...")
         claims = self.extractor.extract(backstory, character, book_name)
         if verbose:
             print(f"   Found {len(claims)} claims")
             for i, c in enumerate(claims):
-                print(f"   [{i+1}] {c[:70]}...")
+                print(f"   [{i+1}] {c[:80]}...")
         
         if not claims:
             return 1, {
@@ -579,26 +605,39 @@ class FastVerificationPipeline:
                 'claims': []
             }
         
-        # 2. For each claim: retrieve + verify
-        results = []
-        for i, claim in enumerate(claims):
-            if verbose:
-                print(f"\n2. Verifying claim {i+1}/{len(claims)}...")
-            
-            # Retrieve (no LLM)
-            evidence = self.retriever.search(claim)
-            if verbose:
-                print(f"   Retrieved {len(evidence)} chunks")
-            
-            # Verify (1 LLM call)
-            result = self.verifier.verify(claim, evidence, character, book_name)
-            results.append(result)
-            
-            if verbose:
-                print(f"   Verdict: {result['verdict']} (conf: {result['confidence']:.2f})")
-                print(f"   Reason: {result['reasoning'][:80]}...")
+        # 2. Retrieve evidence for all claims
+        if verbose:
+            print("\n2. Retrieving evidence...")
+        claim_evidence = [(claim, self.retriever.search(claim)) for claim in claims]
         
-        # 3. Aggregate
+        # 3. Verify claims in parallel
+        if verbose:
+            print("3. Verifying claims...")
+        
+        def verify_single(args):
+            idx, claim, evidence = args
+            return idx, self.verifier.verify(claim, evidence, character, book_name)
+        
+        results = [None] * len(claims)
+        with ThreadPoolExecutor(max_workers=min(5, len(claims))) as executor:
+            futures = {
+                executor.submit(verify_single, (i, claim, evidence)): i
+                for i, (claim, evidence) in enumerate(claim_evidence)
+            }
+            for future in as_completed(futures):
+                try:
+                    idx, result = future.result()
+                    results[idx] = result
+                    if verbose:
+                        citation_note = " [CITED]" if result.get('citation') else ""
+                        print(f"   Claim {idx+1}: {result['verdict']} (conf: {result['confidence']:.2f}){citation_note}")
+                except Exception as e:
+                    print(f"   Error verifying claim: {e}")
+        
+        # Filter out None results (failed verifications)
+        results = [r for r in results if r is not None]
+        
+        # 4. Aggregate
         prediction, details = self.aggregator.aggregate(results)
         
         elapsed = time.time() - start_time
@@ -616,7 +655,7 @@ class FastVerificationPipeline:
 
 
 # ============================================================================
-# Fast Evaluator
+# Evaluator
 # ============================================================================
 
 class FastEvaluator:
@@ -656,7 +695,7 @@ class FastEvaluator:
                 )
             except Exception as e:
                 print(f"Error processing sample: {e}")
-                prediction = 1  # Default to consistent on error
+                prediction = 1
                 details = {'error': str(e)}
             
             correct = prediction == true_label
@@ -678,7 +717,6 @@ class FastEvaluator:
         correct = sum(1 for r in self.results if r['correct'])
         accuracy = correct / len(self.results) if self.results else 0
         
-        # Per-class accuracy
         consistent_samples = [r for r in self.results if r['true_label'] == 'consistent']
         contradict_samples = [r for r in self.results if r['true_label'] == 'contradict']
         
@@ -708,10 +746,6 @@ class FastEvaluator:
             'llm_stats': llm_stats
         }
 
-
-# ============================================================================
-# Main
-# ============================================================================
 
 if __name__ == "__main__":
     print("Fast verifier module. Run via: python -m pipeline.run_eval_fast")

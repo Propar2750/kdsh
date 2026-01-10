@@ -1,13 +1,13 @@
 {
-  "timestamp": "2026-01-10T14:19:19.012393",
-  "accuracy": 0.35,
-  "correct": 7,
-  "total": 20,
+  "timestamp": "2026-01-10T16:00:37.303224",
+  "accuracy": 1.0,
+  "correct": 2,
+  "total": 2,
   "llm_stats": {
-    "call_count": 120,
-    "total_time": 1232.1120495796204,
-    "avg_time": 10.267600413163503,
-    "errors": 0
+    "call_count": 12,
+    "total_time": 259.28833985328674,
+    "avg_time": 21.607361654440563,
+    "errors": 5
   },
   "results": [
     {
@@ -21,114 +21,6 @@
       "true": "contradict",
       "pred": "contradict",
       "correct": true
-    },
-    {
-      "id": 74,
-      "true": "consistent",
-      "pred": "contradict",
-      "correct": false
-    },
-    {
-      "id": 109,
-      "true": "contradict",
-      "pred": "contradict",
-      "correct": true
-    },
-    {
-      "id": 104,
-      "true": "consistent",
-      "pred": "contradict",
-      "correct": false
-    },
-    {
-      "id": 35,
-      "true": "contradict",
-      "pred": "contradict",
-      "correct": true
-    },
-    {
-      "id": 18,
-      "true": "consistent",
-      "pred": "contradict",
-      "correct": false
-    },
-    {
-      "id": 31,
-      "true": "consistent",
-      "pred": "contradict",
-      "correct": false
-    },
-    {
-      "id": 68,
-      "true": "consistent",
-      "pred": "consistent",
-      "correct": true
-    },
-    {
-      "id": 9,
-      "true": "consistent",
-      "pred": "consistent",
-      "correct": true
-    },
-    {
-      "id": 84,
-      "true": "consistent",
-      "pred": "contradict",
-      "correct": false
-    },
-    {
-      "id": 83,
-      "true": "contradict",
-      "pred": "consistent",
-      "correct": false
-    },
-    {
-      "id": 134,
-      "true": "consistent",
-      "pred": "contradict",
-      "correct": false
-    },
-    {
-      "id": 88,
-      "true": "consistent",
-      "pred": "contradict",
-      "correct": false
-    },
-    {
-      "id": 67,
-      "true": "consistent",
-      "pred": "consistent",
-      "correct": true
-    },
-    {
-      "id": 112,
-      "true": "contradict",
-      "pred": "consistent",
-      "correct": false
-    },
-    {
-      "id": 79,
-      "true": "contradict",
-      "pred": "consistent",
-      "correct": false
-    },
-    {
-      "id": 55,
-      "true": "consistent",
-      "pred": "contradict",
-      "correct": false
-    },
-    {
-      "id": 12,
-      "true": "contradict",
-      "pred": "consistent",
-      "correct": false
-    },
-    {
-      "id": 13,
-      "true": "consistent",
-      "pred": "contradict",
-      "correct": false
     }
   ]
 }

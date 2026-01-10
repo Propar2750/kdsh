@@ -26,12 +26,12 @@ Also produce an evidence rationale internally.
 - **Docker**: CUDA 12.8 + PyTorch nightly (cu128) for RTX 5060 Blackwell support
 - **Chunk size**: 400 tokens ; overlap: 100 front + 100 back (200 total overlap)
 - **Embedding model**: nomic-ai/nomic-embed-text-v1.5 (768-dim, matryoshka support)
-- **Reasoning LLM**: meta-llama/Llama-3.1-8B-Instruct (for claim extraction & verification)
-- #claims per backstory: ___
-- Contradiction policy: (hard-kill / weighted / threshold) -> ___
-- Retriever: (top-k=___) ; rerank: (none / LLM / cross-encoder)
-- Verifier: (NLI model / LLM rubric) -> ___
-- Aggregator rule: ___ (describe in 2 lines)
+- **Reasoning LLM**: Groq API with llama-3.1-8b-instant (free, ~1s per call)
+- #claims per backstory: 5
+- Contradiction policy: hard-kill (any contradiction → predict 0)
+- Retriever: top-k=10 hybrid (BM25 + vector), no LLM rerank
+- Verifier: LLM rubric via Groq API
+- Aggregator rule: If any claim contradicts → 0, else → 1
 
 ## Data contracts
 - story_id: string
@@ -140,7 +140,12 @@ Dataset/
 - **PyTorch**: 2.11.0.dev+cu128 (Blackwell support)
 - **CUDA**: 12.8
 - **Embedding**: nomic-ai/nomic-embed-text-v1.5
-- **LLM**: meta-llama/Llama-3.1-8B-Instruct (via transformers + accelerate)
+- **LLM**: Groq API with llama-3.1-8b-instant (free, fast cloud inference)
+
+### Environment Variables
+```bash
+GROQ_API_KEY=your-key-here  # Get free key at https://console.groq.com/keys
+```
 
 ---
 

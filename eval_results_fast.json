@@ -1,13 +1,13 @@
 {
-  "timestamp": "2026-01-10T16:00:37.303224",
-  "accuracy": 1.0,
-  "correct": 2,
-  "total": 2,
+  "timestamp": "2026-01-10T18:14:38.977114",
+  "accuracy": 0.6,
+  "correct": 3,
+  "total": 5,
   "llm_stats": {
-    "call_count": 12,
-    "total_time": 259.28833985328674,
-    "avg_time": 21.607361654440563,
-    "errors": 5
+    "call_count": 0,
+    "total_time": 0.0,
+    "avg_time": 0.0,
+    "errors": 0
   },
   "results": [
     {
@@ -19,7 +19,25 @@
     {
       "id": 137,
       "true": "contradict",
-      "pred": "contradict",
+      "pred": "consistent",
+      "correct": false
+    },
+    {
+      "id": 74,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 109,
+      "true": "contradict",
+      "pred": "consistent",
+      "correct": false
+    },
+    {
+      "id": 104,
+      "true": "consistent",
+      "pred": "consistent",
       "correct": true
     }
   ]

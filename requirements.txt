@@ -8,5 +8,8 @@ pytest>=7.0.0
 sentence-transformers>=2.2.0
 einops>=0.6.0
 
+# Search
+rank-bm25>=0.2.2
+
 # LLM API
 groq>=0.9.0

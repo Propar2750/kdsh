@@ -109,20 +109,31 @@ Dataset/
 - `ChunkEmbedder` - Embeds chunks, provides search()
 - `PathwayVectorIndex` - Pathway table with embeddings
 
-**verifier.py** - Full verification pipeline ✅
+**verifier.py** - Full verification pipeline (SLOW - ~65 LLM calls per sample)
 - `LlamaLLM` - Llama wrapper with batching + memory optimization
 - `ClaimExtractor` - Extract atomic facts from backstories
 - `QueryGenerator` - Generate search queries per claim
 - `BM25Retriever` - Sparse lexical search
 - `HybridRetriever` - Combines BM25 + vector search with score fusion
-- `Reranker` - LLM-based relevance reranking
+- `Reranker` - LLM-based relevance reranking (SLOW!)
 - `ClaimVerifier` - Verify claims against evidence
 - `Aggregator` - Combine verdicts into final prediction
 - `VerificationPipeline` - Full end-to-end pipeline
 - `Evaluator` - Evaluate accuracy on labeled data
 
-**run_eval.py** - Evaluation runner
-- `python -m pipeline.run_eval --max-samples 10 --verbose`
+**verifier_fast.py** - FAST verification pipeline (~6 LLM calls per sample) ⭐
+- `FastLlamaLLM` - Optimized LLM wrapper with timing stats
+- `FastClaimExtractor` - Single LLM call for claim extraction
+- `SimpleBM25` - Pure Python BM25 (no external deps)
+- `FastHybridRetriever` - Score-based fusion (NO LLM reranking)
+- `FastClaimVerifier` - Simple verdict extraction
+- `FastAggregator` - Any-contradiction policy
+- `FastVerificationPipeline` - 10x faster end-to-end pipeline
+- `FastEvaluator` - Quick evaluation with stats
+
+**run_eval.py** - Original evaluation runner (SLOW)
+**run_eval_fast.py** - FAST evaluation runner ⭐
+- `python -m pipeline.run_eval_fast --max-samples 5`
 
 ### Tech Stack
 - **Pathway**: 0.28.0 (real tables, not stubs)
@@ -150,12 +161,26 @@ Dataset/
 - **Current setup**: Works with 8GB dedicated + 16GB shared memory
 - **Recommendation**: 8-bit quantization recommended for faster inference
 
-### Pipeline Efficiency
-- **Batching**: Uses HF `datasets` library for batched LLM inference
-- **Parallelization**: Retrieval (BM25 + vector) runs in parallel threads
-- **LLM bottleneck**: LLM calls must be sequential (single GPU)
-- **Reranking**: Most expensive step (LLM call per chunk)
-- **Tip**: Reduce `top_k_per_query` or skip reranking for speed
+### Pipeline Efficiency - WHY IT WAS SLOW
+
+**Original pipeline (verifier.py) - ~65+ LLM calls per sample:**
+1. Claim extraction: 1 LLM call
+2. Per claim (x5 claims):
+   - Query generation: 1 LLM call
+   - Reranking: ~10 LLM calls (one per retrieved chunk!)
+   - Verification: 1 LLM call
+   - Subtotal: ~12 LLM calls per claim
+3. Total: 1 + (5 × 12) = **~61 LLM calls per sample**
+4. At ~10s per call = **~10 minutes per sample** = **12 hours for 72 samples**
+
+**FAST pipeline (verifier_fast.py) - ~6 LLM calls per sample:**
+1. Claim extraction: 1 LLM call
+2. Per claim (x5 claims):
+   - Query: Use claim directly (0 LLM calls)
+   - Reranking: Score fusion only (0 LLM calls)
+   - Verification: 1 LLM call
+3. Total: 1 + 5 = **6 LLM calls per sample**
+4. At ~10s per call = **~1 minute per sample** = **~1 hour for 72 samples**
 
 ### Config Options (VerifierConfig)
 ```python

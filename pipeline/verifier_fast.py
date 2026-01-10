@@ -1,22 +1,21 @@
 """
 FAST Verifier module for KDSH Track A pipeline.
-Optimized version that minimizes LLM calls for speed.
+Uses Groq API for fast, free LLM inference.
 
 Key optimizations:
-1. NO LLM-based reranking (uses score-based fusion instead)
-2. NO separate query generation (uses claim directly + simple variations)
-3. Batched verification where possible
-4. Clear timeouts and limits
+1. Groq API - Free, fast cloud inference (~1s per call vs ~120s local)
+2. NO LLM-based reranking (uses score-based fusion instead)
+3. NO separate query generation (uses claim directly)
 """
 
 import re
 import json
+import os
 import numpy as np
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from collections import Counter
 import time
-import torch
 
 
 # ============================================================================
@@ -26,10 +25,10 @@ import torch
 @dataclass
 class FastVerifierConfig:
     """Configuration for the fast verification pipeline."""
-    # LLM settings
-    llm_model: str = "meta-llama/Llama-3.1-8B-Instruct"
-    llm_max_new_tokens: int = 512
+    # LLM settings (Groq API)
+    llm_model: str = "llama-3.1-8b-instant"  # Groq model name
     llm_temperature: float = 0.1
+    llm_max_tokens: int = 512
     
     # Retrieval settings
     top_k_retrieval: int = 10     # Chunks from hybrid retrieval per query
@@ -39,84 +38,72 @@ class FastVerifierConfig:
     
     # Verification settings
     max_claims: int = 5           # Reduced from 10 for speed
-    
-    # Timeouts (seconds)
-    llm_timeout: int = 60         # Max time per LLM call
 
 
 DEFAULT_FAST_CONFIG = FastVerifierConfig()
 
 
 # ============================================================================
-# Fast LLM Wrapper (with timeout tracking)
+# Groq LLM Wrapper (Fast, Free API)
 # ============================================================================
 
-class FastLlamaLLM:
+class GroqLLM:
     """
-    Optimized LLM wrapper with call counting and timing.
+    LLM wrapper using Groq API - fast and free.
+    
+    Get your API key at: https://console.groq.com/keys
+    Set it as environment variable: GROQ_API_KEY
     """
     
     def __init__(self, config: Optional[FastVerifierConfig] = None):
         self.config = config or DEFAULT_FAST_CONFIG
-        self._pipeline = None
+        self._client = None
         self.call_count = 0
         self.total_time = 0.0
     
-    def _load_model(self):
-        if self._pipeline is not None:
-            return
+    def _get_client(self):
+        if self._client is not None:
+            return self._client
         
-        from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+        from groq import Groq
         
-        print(f"Loading LLM: {self.config.llm_model}")
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "GROQ_API_KEY environment variable not set!\n"
+                "Get your free API key at: https://console.groq.com/keys\n"
+                "Then set it: export GROQ_API_KEY='your-key-here'"
+            )
         
-        if device == "cuda":
-            gpu_mem = torch.cuda.get_device_properties(0).total_memory / 1e9
-            print(f"Device: {device} (GPU: {gpu_mem:.1f} GB)")
-        
-        tokenizer = AutoTokenizer.from_pretrained(self.config.llm_model)
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
-        
-        # Load with float16 for speed
-        model = AutoModelForCausalLM.from_pretrained(
-            self.config.llm_model,
-            torch_dtype=torch.float16,
-            device_map="auto",
-            low_cpu_mem_usage=True
-        )
-        
-        self._pipeline = pipeline(
-            "text-generation",
-            model=model,
-            tokenizer=tokenizer,
-            device_map="auto"
-        )
-        print("LLM loaded!")
+        self._client = Groq(api_key=api_key)
+        print(f"Groq API initialized (model: {self.config.llm_model})")
+        return self._client
     
-    def generate(self, prompt: str, max_new_tokens: Optional[int] = None) -> str:
-        """Generate with timing."""
-        self._load_model()
+    def generate(self, prompt: str, max_tokens: Optional[int] = None) -> str:
+        """Generate text using Groq API."""
+        client = self._get_client()
         
         start = time.time()
         self.call_count += 1
         
-        max_tokens = max_new_tokens or self.config.llm_max_new_tokens
+        max_tok = max_tokens or self.config.llm_max_tokens
         
-        result = self._pipeline(
-            prompt,
-            max_new_tokens=max_tokens,
-            temperature=self.config.llm_temperature,
-            do_sample=self.config.llm_temperature > 0,
-            pad_token_id=self._pipeline.tokenizer.eos_token_id,
-            return_full_text=False
-        )
+        try:
+            response = client.chat.completions.create(
+                model=self.config.llm_model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=self.config.llm_temperature,
+                max_tokens=max_tok,
+            )
+            result = response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"Groq API error: {e}")
+            result = "ERROR"
         
         elapsed = time.time() - start
         self.total_time += elapsed
         
-        return result[0]['generated_text'].strip()
+        return result
     
     def get_stats(self) -> Dict[str, Any]:
         """Get LLM call statistics."""
@@ -145,7 +132,7 @@ Backstory:
 
 List up to {max_claims} specific, verifiable claims (one per line, numbered):"""
 
-    def __init__(self, llm: FastLlamaLLM, config: Optional[FastVerifierConfig] = None):
+    def __init__(self, llm: GroqLLM, config: Optional[FastVerifierConfig] = None):
         self.llm = llm
         self.config = config or DEFAULT_FAST_CONFIG
     
@@ -158,7 +145,7 @@ List up to {max_claims} specific, verifiable claims (one per line, numbered):"""
             max_claims=self.config.max_claims
         )
         
-        response = self.llm.generate(prompt, max_new_tokens=400)
+        response = self.llm.generate(prompt, max_tokens=400)
         
         # Parse numbered claims
         claims = []
@@ -323,7 +310,7 @@ IMPORTANT: Look for factual conflicts - different events, dates, relationships, 
 
 Your verdict (one word only):"""
 
-    def __init__(self, llm: FastLlamaLLM, config: Optional[FastVerifierConfig] = None):
+    def __init__(self, llm: GroqLLM, config: Optional[FastVerifierConfig] = None):
         self.llm = llm
         self.config = config or DEFAULT_FAST_CONFIG
     
@@ -352,7 +339,7 @@ Your verdict (one word only):"""
             evidence=evidence_text
         )
         
-        response = self.llm.generate(prompt, max_new_tokens=50)
+        response = self.llm.generate(prompt, max_tokens=50)
         
         # Parse verdict
         response_lower = response.lower()
@@ -430,8 +417,8 @@ class FastVerificationPipeline:
         self.chunks = chunks
         self.embedder = embedder
         
-        print("Initializing FAST verification pipeline...")
-        self.llm = FastLlamaLLM(config)
+        print("Initializing FAST verification pipeline (Groq API)...")
+        self.llm = GroqLLM(config)
         self.extractor = FastClaimExtractor(self.llm, config)
         self.retriever = FastHybridRetriever(chunks, embedder, config)
         self.verifier = FastClaimVerifier(self.llm, config)

@@ -26,6 +26,7 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 | test26 | 67.5% | 96.0% | 20.0% | Swung back - missing contradictions again |
 | test27 | 72.5% | 72.0% | 73.3% | **🎉 BOTH >60%!** Balanced prompt working |
 | test28 | 65.0% | 72.5% | 51.7% | Full 80 samples - contradict dropped below 60% |
+| test29 | 70.0% | 68.0% | 73.3% | **BOTH >60%** on 40 samples with bio retrieval |
 
 ---
 

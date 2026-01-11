@@ -504,7 +504,7 @@ class FastHybridRetriever:
 class FastClaimVerifier:
     """Verify claims with citation-based evidence checking."""
     SYSTEM_PROMPT="""You verify claims about fictional characters against book evidence.
-
+    
 VERDICTS:
 - SUPPORTS: Evidence confirms the claim is true
 - CONTRADICTS: Evidence shows conflicting information
@@ -519,6 +519,7 @@ KEY RULES FOR CONTRADICTS:
 1. Different dates = CONTRADICTS (claim says "1815", evidence says "1811" → CONTRADICTS)
 2. Different facts = CONTRADICTS (claim says "royalist", evidence says "Jacobin" → CONTRADICTS)
 3. Opposite statements = CONTRADICTS (claim says "escaped", evidence says "died there" → CONTRADICTS)
+4. Search for any incsistencies between the claim and evidence, like a detective. Precise but not assumptional.
 
 KEY RULES FOR SUPPORTS:
 1. Evidence confirms the same fact stated in the claim → SUPPORTS

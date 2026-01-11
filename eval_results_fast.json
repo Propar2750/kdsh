@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-01-11T14:36:02.189511",
-  "accuracy": 0.6375,
-  "correct": 51,
+  "timestamp": "2026-01-11T15:42:37.225400",
+  "accuracy": 0.6625,
+  "correct": 53,
   "total": 80,
   "llm_stats": {
-    "call_count": 469,
-    "total_time": 315.781245470047,
-    "avg_time": 0.6733075596376269,
+    "call_count": 468,
+    "total_time": 345.36641669273376,
+    "avg_time": 0.7379624288306277,
     "errors": 0
   },
   "results": [
@@ -133,8 +133,8 @@
     {
       "id": 102,
       "true": "consistent",
-      "pred": "contradict",
-      "correct": false
+      "pred": "consistent",
+      "correct": true
     },
     {
       "id": 92,
@@ -151,8 +151,8 @@
     {
       "id": 11,
       "true": "contradict",
-      "pred": "contradict",
-      "correct": true
+      "pred": "consistent",
+      "correct": false
     },
     {
       "id": 65,
@@ -193,8 +193,8 @@
     {
       "id": 123,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 116,
@@ -217,8 +217,8 @@
     {
       "id": 128,
       "true": "consistent",
-      "pred": "contradict",
-      "correct": false
+      "pred": "consistent",
+      "correct": true
     },
     {
       "id": 29,
@@ -331,8 +331,8 @@
     {
       "id": 36,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 73,
@@ -343,8 +343,8 @@
     {
       "id": 98,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 25,
@@ -367,20 +367,20 @@
     {
       "id": 57,
       "true": "consistent",
-      "pred": "contradict",
-      "correct": false
+      "pred": "consistent",
+      "correct": true
     },
     {
       "id": 106,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 118,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 126,
@@ -391,8 +391,8 @@
     {
       "id": 4,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 125,

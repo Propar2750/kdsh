@@ -50,11 +50,11 @@ plt.rcParams.update({
 # Key test runs with their results
 test_data = {
     'runs': ['test6', 'test7', 'test10', 'test15', 'test17', 'test20', 
-             'test24', 'test27', 'test32', 'test37', 'test40', 'test44', 'test45'],
-    'overall': [52.5, 65.0, 43.3, 56.7, 66.7, 70.0, 60.0, 72.5, 75.0, 70.0, 67.5, 63.8, 58.8],
-    'consistent': [45.1, 100.0, 11.1, 50.0, 72.2, 77.8, 96.0, 72.0, 76.0, 72.0, 68.0, 68.6, 66.7],
-    'contradict': [65.5, 0.0, 91.7, 66.7, 58.3, 58.3, 0.0, 73.3, 73.3, 66.7, 66.7, 55.2, 44.8],
-    'milestones': [False, False, False, True, False, True, False, True, True, True, True, True, False]
+             'test24', 'test27', 'test32', 'test37', 'test40', 'test44', 'test45', 'test46'],
+    'overall': [52.5, 65.0, 43.3, 56.7, 66.7, 70.0, 60.0, 72.5, 75.0, 70.0, 67.5, 63.8, 58.8, 66.2],
+    'consistent': [45.1, 100.0, 11.1, 50.0, 72.2, 77.8, 96.0, 72.0, 76.0, 72.0, 68.0, 68.6, 66.7, 68.6],
+    'contradict': [65.5, 0.0, 91.7, 66.7, 58.3, 58.3, 0.0, 73.3, 73.3, 66.7, 66.7, 55.2, 44.8, 62.1],
+    'milestones': [False, False, False, True, False, True, False, True, True, True, True, True, False, True]
 }
 
 # Phase labels
@@ -70,8 +70,9 @@ phases = {
     'test32': 'Best 40\n(76%/73%)',
     'test37': 'Stable\nBalance',
     'test40': 'FP\nFiltering',
-    'test44': 'Best 80\n(69%/55%)',
-    'test45': 'Failed\n(67%/45%)'
+    'test44': 'Stable 80\n(69%/55%)',
+    'test45': 'Failed\n(67%/45%)',
+    'test46': '🎉 GOAL!\n(69%/62%)'
 }
 
 # ============================================================================

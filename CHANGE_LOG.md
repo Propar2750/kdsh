@@ -27,6 +27,25 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 | test27 | 72.5% | 72.0% | 73.3% | **🎉 BOTH >60%!** Balanced prompt working |
 | test28 | 65.0% | 72.5% | 51.7% | Full 80 samples - contradict dropped below 60% |
 | test29 | 70.0% | 68.0% | 73.3% | **BOTH >60%** on 40 samples with bio retrieval |
+| test30 | 61.3% | 66.7% | 51.7% | Full 80 - contradict dropped again |
+
+---
+
+## Change #13: Enhanced false positive filtering
+**Date**: Latest iteration
+
+**Problem Identified**:
+- test30 on 80 samples: 66.7% consistent, 51.7% contradict
+- False positives: "no mention of X" being treated as contradiction
+- Example: "rescued Yurook" → LLM says CONTRADICTS because "no mention of Yurook"
+
+**Solution**:
+Added more FALSE_POSITIVE_PHRASES:
+- "no mention of", "there is no mention", "does not mention"
+- "no evidence of", "no information about"
+- Applied filter to 0.6+ confidence contradictions too
+
+**Expected Impact**: Fewer false positives from "no mention = contradiction" pattern
 
 ---
 

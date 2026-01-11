@@ -685,15 +685,12 @@ If evidence doesn't mention the topic at all → UNCLEAR."""
 class FastAggregator:
     """Aggregate claim verdicts into final prediction."""
     
-    # Phrases that indicate false positive contradictions  
+    # Phrases that indicate false positive contradictions (be conservative)
     FALSE_POSITIVE_PHRASES = [
         'same person', 'same individual', 'are the same',
         'does not directly', 'does not explicitly',
-        'implies', 'suggests', 'may indicate',
-        'no mention of', 'there is no mention',  # No mention is NOT contradiction
-        'not mentioned', 'does not mention',
-        'however, the evidence', 'but the evidence',  # Often followed by "doesn't mention X"
-        'no evidence of', 'no information about',
+        'there is no mention of',  # Very specific pattern
+        'evidence does not mention',  # Very specific pattern
     ]
     
     # Phrases that indicate invalid citations (citation starts with these)
@@ -748,14 +745,10 @@ class FastAggregator:
                 early_stop = (i, r, claim_text)
                 break
         
-        # Find any contradiction with decent confidence (0.6+) that isn't a false positive
+        # Find any contradiction with decent confidence (0.6+)
         decent_contradiction = None
         for i, r in enumerate(results):
             if r['verdict'] == 'contradicts' and r.get('confidence', 0) >= 0.6:
-                # Filter out reasoning with false positive patterns
-                reasoning = r.get('reasoning', '').lower()
-                if any(p in reasoning for p in self.FALSE_POSITIVE_PHRASES):
-                    continue  # Skip this contradiction
                 claim_text = claims[i] if claims and i < len(claims) else f"Claim {i+1}"
                 decent_contradiction = (i, r, claim_text)
                 break

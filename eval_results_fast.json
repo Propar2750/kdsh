@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-01-11T14:18:41.247839",
-  "accuracy": 0.6125,
-  "correct": 49,
+  "timestamp": "2026-01-11T14:36:02.189511",
+  "accuracy": 0.6375,
+  "correct": 51,
   "total": 80,
   "llm_stats": {
-    "call_count": 468,
-    "total_time": 262.4673020839691,
-    "avg_time": 0.5608275685554895,
+    "call_count": 469,
+    "total_time": 315.781245470047,
+    "avg_time": 0.6733075596376269,
     "errors": 0
   },
   "results": [
@@ -79,8 +79,8 @@
     {
       "id": 83,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 134,
@@ -91,8 +91,8 @@
     {
       "id": 88,
       "true": "consistent",
-      "pred": "contradict",
-      "correct": false
+      "pred": "consistent",
+      "correct": true
     },
     {
       "id": 67,
@@ -151,8 +151,8 @@
     {
       "id": 11,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 65,
@@ -193,8 +193,8 @@
     {
       "id": 123,
       "true": "consistent",
-      "pred": "contradict",
-      "correct": false
+      "pred": "consistent",
+      "correct": true
     },
     {
       "id": 116,
@@ -217,8 +217,8 @@
     {
       "id": 128,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 29,
@@ -271,8 +271,8 @@
     {
       "id": 71,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 26,
@@ -343,8 +343,8 @@
     {
       "id": 98,
       "true": "contradict",
-      "pred": "contradict",
-      "correct": true
+      "pred": "consistent",
+      "correct": false
     },
     {
       "id": 25,
@@ -361,14 +361,14 @@
     {
       "id": 105,
       "true": "contradict",
-      "pred": "contradict",
-      "correct": true
+      "pred": "consistent",
+      "correct": false
     },
     {
       "id": 57,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 106,
@@ -481,8 +481,8 @@
     {
       "id": 130,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 48,

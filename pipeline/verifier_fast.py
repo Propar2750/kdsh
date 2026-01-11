@@ -510,10 +510,20 @@ VERDICTS:
 - CONTRADICTS: Evidence shows conflicting information
 - UNCLEAR: Evidence doesn't address this topic AT ALL
 
+VERIFICATION PRIORITY:
+1. First, look for CONTRADICTIONS - any factual conflict with the evidence
+2. If no contradiction exists, actively search for SUPPORTING statements
+3. Only mark UNCLEAR if evidence truly doesn't address the topic
+
 KEY RULES FOR CONTRADICTS:
 1. Different dates = CONTRADICTS (claim says "1815", evidence says "1811" → CONTRADICTS)
 2. Different facts = CONTRADICTS (claim says "royalist", evidence says "Jacobin" → CONTRADICTS)
 3. Opposite statements = CONTRADICTS (claim says "escaped", evidence says "died there" → CONTRADICTS)
+
+KEY RULES FOR SUPPORTS:
+1. Evidence confirms the same fact stated in the claim → SUPPORTS
+2. Evidence describes actions/events matching the claim → SUPPORTS
+3. Character traits or roles confirmed by evidence → SUPPORTS
 
 KEY RULES FOR UNCLEAR:
 1. Topic not mentioned at all in evidence → UNCLEAR

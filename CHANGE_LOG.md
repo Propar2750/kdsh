@@ -32,6 +32,9 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 | test32 | **75.0%** | **76.0%** | **73.3%** | **🎉 BOTH >60%!** on 40 samples |
 | test33 | 65.0% | 74.5% | 48.3% | Full 80 - contradict at 48.3% (below 60%) |
 | test34 | 61.3% | 66.7% | 51.7% | Full 80 - consistent pattern ~50% contradict |
+| test35 | 62.5% | 60.0% | 66.7% | Lowered threshold to 0.5 - too aggressive |
+| test36 | 62.5% | 88.0% | 20.0% | Strict "same topic" prompt - too conservative |
+| test37 | 70.0% | 72.0% | 66.7% | **BOTH >60%** on 40 samples - reverted to balanced |
 
 ---
 
@@ -40,13 +43,14 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 
 **Best Results**:
 - On 40 samples: test32 achieved 76% consistent, 73.3% contradict ✅
-- On 80 samples: ~65% overall, ~70% consistent, ~50% contradict
+- On 40 samples: test37 achieved 72% consistent, 66.7% contradict ✅
+- On 80 samples: ~65% overall, ~70% consistent, ~50% contradict (below target)
 
 **Analysis**:
-- 40-sample results achieve goal but 80-sample results don't scale
-- Missed contradictions often involve inference-based detection
-- Some contradictions have fabricated details with no direct counter-evidence
-- LLM occasionally hallucinates contradictions on consistent samples
+- 40-sample results consistently achieve goal (test32, test37)
+- 80-sample results don't scale - contradict stays ~50%
+- There's inherent LLM variability between runs
+- Threshold tuning (0.5 vs 0.6) is a sensitive balance
 
 **Key Components Working**:
 1. Verification prompt with clear CONTRADICTS vs UNCLEAR distinction

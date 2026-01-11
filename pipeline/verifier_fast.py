@@ -685,12 +685,14 @@ If evidence doesn't mention the topic at all → UNCLEAR."""
 class FastAggregator:
     """Aggregate claim verdicts into final prediction."""
     
-    # Phrases that indicate false positive contradictions (be conservative)
+    # Phrases that indicate false positive contradictions
     FALSE_POSITIVE_PHRASES = [
         'same person', 'same individual', 'are the same',
         'does not directly', 'does not explicitly',
-        'there is no mention of',  # Very specific pattern
-        'evidence does not mention',  # Very specific pattern
+        'there is no mention of',
+        'evidence does not mention',
+        'not that he',  # Pattern: "not that he did X" (comparing unrelated events)
+        'not that she',
     ]
     
     # Phrases that indicate invalid citations (citation starts with these)

@@ -407,6 +407,13 @@ class FastHybridRetriever:
         # Add character name as separate query if provided
         if character:
             queries.append(character)
+            # Add character + key action/attribute patterns
+            born_match = re.search(r'born\s+(?:in|at)\s+(\w+)', query, re.I)
+            if born_match:
+                queries.append(f"{character} born")
+            died_match = re.search(r'died\s+(?:in|at|on)', query, re.I)
+            if died_match:
+                queries.append(f"{character} died death")
         
         # Extract quoted phrases
         quoted = re.findall(r'"([^"]+)"', query)
@@ -424,8 +431,16 @@ class FastHybridRetriever:
             if len(cap) > 2 and cap.lower() not in ['the', 'and', 'was', 'his', 'her']:
                 queries.append(cap)
         
-        return list(set(queries))[:5]  # Limit to 5 queries
-    
+        # Extract key biographical terms with character
+        if character:
+            bio_patterns = ['arrested', 'imprisoned', 'escaped', 'born', 'died', 'married', 'father', 'mother']
+            query_lower = query.lower()
+            for pattern in bio_patterns:
+                if pattern in query_lower:
+                    queries.append(f"{character} {pattern}")
+        
+        return list(set(queries))[:6]  # Limit to 6 queries
+
     def search(self, query: str, top_k: Optional[int] = None, character: Optional[str] = None) -> List[Dict[str, Any]]:
         """Hybrid search using RRF with optional query expansion."""
         k = top_k or self.config.top_k_retrieval

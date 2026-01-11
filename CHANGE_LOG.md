@@ -41,6 +41,26 @@ Looking at missed contradictions (e.g., test_42 - Faria):
 
 ---
 
+## Change #12: Improved biographical query expansion
+**Date**: Latest iteration
+
+**Problem Identified**:
+- Missed contradictions due to retrieval not finding key passages
+- Example: "Faria born in Parma" vs book's "born at Rome" - retrieval didn't search for "Faria born"
+
+**Solution**:
+Enhanced `_extract_key_terms()` to add biographical query patterns:
+1. Add "character born" query for birth claims
+2. Add "character died death" query for death claims  
+3. Add key biographical terms: arrested, imprisoned, escaped, born, died, married, father, mother
+4. Increase query limit from 5 to 6
+
+**Expected Impact**:
+- Better retrieval of biographical facts (birthplace, dates, family)
+- More contradictions detected when evidence exists but was missed before
+
+---
+
 ## Change #11: Sharper CONTRADICTS vs UNCLEAR distinction
 **Date**: Latest iteration
 

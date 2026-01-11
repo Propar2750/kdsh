@@ -24,6 +24,7 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 | test24 | 60.0% | 96.0% | 0.0% | **CRITICAL** - 0% contradict, prompt too conservative |
 | test25 | 60.0% | 52.0% | 73.3% | Swung too far - now too many false positives |
 | test26 | 67.5% | 96.0% | 20.0% | Swung back - missing contradictions again |
+| test27 | 72.5% | 72.0% | 73.3% | **🎉 BOTH >60%!** Balanced prompt working |
 
 ---
 

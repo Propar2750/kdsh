@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-01-11T12:47:35.193043",
-  "accuracy": 0.675,
-  "correct": 27,
+  "timestamp": "2026-01-11T12:53:08.784477",
+  "accuracy": 0.725,
+  "correct": 29,
   "total": 40,
   "llm_stats": {
-    "call_count": 236,
-    "total_time": 132.2199091911316,
-    "avg_time": 0.5602538525047949,
+    "call_count": 234,
+    "total_time": 126.28682827949524,
+    "avg_time": 0.5396873003397232,
     "errors": 0
   },
   "results": [
@@ -19,8 +19,8 @@
     {
       "id": 137,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 74,
@@ -31,14 +31,14 @@
     {
       "id": 109,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 104,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 35,
@@ -55,8 +55,8 @@
     {
       "id": 31,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 68,
@@ -79,8 +79,8 @@
     {
       "id": 83,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 134,
@@ -91,8 +91,8 @@
     {
       "id": 88,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 67,
@@ -103,8 +103,8 @@
     {
       "id": 112,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 79,
@@ -121,8 +121,8 @@
     {
       "id": 12,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 13,
@@ -139,8 +139,8 @@
     {
       "id": 92,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 1,
@@ -163,8 +163,8 @@
     {
       "id": 107,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 66,
@@ -175,8 +175,8 @@
     {
       "id": 89,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 34,
@@ -187,8 +187,8 @@
     {
       "id": 99,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 123,
@@ -223,14 +223,14 @@
     {
       "id": 29,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 69,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 50,

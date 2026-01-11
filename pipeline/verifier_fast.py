@@ -8,17 +8,156 @@ Key optimizations:
 3. Simplified prompts for reliable parsing
 4. Citation-based verification
 5. Parallel claim verification
+6. Detailed result logging to numbered JSON files
 """
 
 import re
 import json
 import os
+import glob
 import numpy as np
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+from pathlib import Path
 import time
+
+
+# ============================================================================
+# Result Logger - Saves detailed verification data to numbered files
+# ============================================================================
+
+class ResultLogger:
+    """
+    Logs detailed verification results to numbered JSON files.
+    Creates test1/, test2/ folders with test_1.json, test_2.json, etc. inside.
+    Each run creates a new folder (test1, test2, etc.)
+    """
+    
+    def __init__(self, output_dir: str = "verification_results"):
+        self.base_dir = Path(output_dir)
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.run_folder = self._create_run_folder()
+        self.output_dir = self.run_folder  # For compatibility
+        self.file_counter = 1  # Always start at 1 for new run folder
+        
+    def _create_run_folder(self) -> Path:
+        """Create a new numbered run folder (test1, test2, etc.)."""
+        existing_folders = [d for d in self.base_dir.iterdir() if d.is_dir() and d.name.startswith('test')]
+        
+        # Extract numbers from existing folders
+        numbers = []
+        for folder in existing_folders:
+            match = re.search(r'^test(\d+)$', folder.name)
+            if match:
+                numbers.append(int(match.group(1)))
+        
+        next_num = max(numbers) + 1 if numbers else 1
+        run_folder = self.base_dir / f"test{next_num}"
+        run_folder.mkdir(parents=True, exist_ok=True)
+        print(f"   📂 Created run folder: {run_folder}")
+        return run_folder
+    
+    def _get_next_file_number(self) -> int:
+        """Find the next available file number (deprecated, kept for compatibility)."""
+        return self.file_counter
+    
+    def log_verification(
+        self,
+        sample_id: Any,
+        character: str,
+        book_name: str,
+        backstory: str,
+        claims: List[str],
+        claim_results: List[Dict[str, Any]],
+        prediction: int,
+        prediction_explanation: str,
+        true_label: Optional[str] = None,
+        elapsed_time: float = 0.0,
+        additional_metadata: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """
+        Log a complete verification result to a new JSON file.
+        
+        Returns the path to the created file.
+        """
+        # Build comprehensive result structure
+        result = {
+            "file_info": {
+                "file_number": self.file_counter,
+                "created_at": datetime.now().isoformat(),
+                "sample_id": sample_id
+            },
+            "sample": {
+                "id": sample_id,
+                "character": character,
+                "book_name": book_name,
+                "backstory": backstory,
+                "true_label": true_label
+            },
+            "verification": {
+                "claims_extracted": claims,
+                "claim_count": len(claims),
+                "claim_results": [
+                    {
+                        "claim_number": i + 1,
+                        "claim_text": claims[i] if i < len(claims) else "N/A",
+                        "verdict": r.get("verdict", "unknown"),
+                        "confidence": r.get("confidence", 0.0),
+                        "reasoning": r.get("reasoning", "No reasoning provided"),
+                        "citation": r.get("citation", None),
+                        "evidence_used": r.get("evidence_metadata", [])
+                    }
+                    for i, r in enumerate(claim_results)
+                ]
+            },
+            "final_decision": {
+                "prediction": prediction,
+                "prediction_label": "consistent" if prediction == 1 else "contradict",
+                "explanation": prediction_explanation,
+                "is_correct": (true_label == ("consistent" if prediction == 1 else "contradict")) if true_label else None
+            },
+            "statistics": {
+                "elapsed_time_seconds": elapsed_time,
+                "verdicts_summary": {
+                    "supports": sum(1 for r in claim_results if r.get("verdict") == "supports"),
+                    "contradicts": sum(1 for r in claim_results if r.get("verdict") == "contradicts"),
+                    "unclear": sum(1 for r in claim_results if r.get("verdict") == "unclear")
+                },
+                "avg_confidence": sum(r.get("confidence", 0) for r in claim_results) / max(1, len(claim_results)),
+                "citations_found": sum(1 for r in claim_results if r.get("citation"))
+            }
+        }
+        
+        # Add any additional metadata
+        if additional_metadata:
+            result["additional_metadata"] = additional_metadata
+        
+        # Write to file in the run folder
+        filename = f"test_{self.file_counter}.json"
+        filepath = self.run_folder / filename
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
+        
+        print(f"   📁 Saved detailed results to: {filepath}")
+        
+        self.file_counter += 1
+        return str(filepath)
+    
+    def get_all_results(self) -> List[Dict[str, Any]]:
+        """Load and return all saved results from current run folder."""
+        results = []
+        for filepath in sorted(self.run_folder.glob("test_*.json")):
+            with open(filepath, 'r', encoding='utf-8') as f:
+                results.append(json.load(f))
+        return results
+    
+    def get_run_folder(self) -> Path:
+        """Return the current run folder path."""
+        return self.run_folder
 
 
 # ============================================================================
@@ -36,8 +175,8 @@ class FastVerifierConfig:
     # Retrieval settings
     top_k_retrieval: int = 15
     top_k_final: int = 8  # More evidence chunks
-    bm25_weight: float = 0.4
-    vector_weight: float = 0.6
+    bm25_weight: float = 0.5  # Increased for better exact term matching
+    vector_weight: float = 0.5
     
     # Verification settings
     max_claims: int = 5
@@ -139,35 +278,36 @@ class GroqLLM:
 class FastClaimExtractor:
     """Extract specific, verifiable claims from backstories."""
     
-    SYSTEM_PROMPT = """You extract SPECIFIC VERIFIABLE FACTS from character backstories.
+    SYSTEM_PROMPT = """You extract SPECIFIC VERIFIABLE FACTS from character backstories that can be checked against the book.
 
-Focus on facts that can be CHECKED against the book:
-- Specific DATES, YEARS, or TIME PERIODS
-- NAMES of people, places, ships, institutions
-- RELATIONSHIPS (who is related to whom, how)
-- SPECIFIC EVENTS (what happened, in what order)
-- LOCATIONS where events occurred
-- NUMBERS, QUANTITIES, DURATIONS
+Extract facts about:
+- DATES, YEARS, TIME PERIODS (e.g., "X happened in 1815", "X spent 10 years doing Y")
+- NAMES of people mentioned (e.g., "X's father was named Y")
+- RELATIONSHIPS (e.g., "X is the son of Y", "X married Y")
+- SPECIFIC EVENTS (e.g., "X was arrested", "X killed Y", "X traveled to Z")
+- LOCATIONS (e.g., "X was born in Paris", "X was imprisoned at the Château d'If")
 
-DO NOT extract:
-- Vague emotional states
-- General character descriptions
-- Opinions or interpretations
-- Meta-information about the novel itself"""
+IMPORTANT:
+- Each claim should be a FACTUAL STATEMENT that the backstory is making
+- Do NOT make meta-comments like "no date is mentioned" 
+- Do NOT extract claims about what is NOT in the backstory
+- Extract what the backstory CLAIMS happened to the character"""
 
-    USER_PROMPT = """Extract {max_claims} SPECIFIC VERIFIABLE FACTS about {character} from this backstory.
+    USER_PROMPT = """Extract {max_claims} FACTUAL CLAIMS about {character} from this backstory.
 
-BACKSTORY:
-{backstory}
+CHARACTER: {character}
+BACKSTORY: "{backstory}"
 
-For each fact, focus on:
-- Dates/years mentioned
-- Names of other people
-- Specific events and their outcomes
-- Locations and places
-- Relationships between characters
+Extract specific factual claims that the backstory makes about {character}. Focus on:
+- Any years or dates mentioned
+- Names of other people involved  
+- What events happened to {character}
+- Where events took place
+- Relationships mentioned
 
-Return exactly {max_claims} numbered facts. Each fact should be ONE specific, checkable claim:
+Each claim should be a statement that CAN BE TRUE OR FALSE based on the book.
+
+Return exactly {max_claims} numbered factual claims:
 1.
 2.
 3.
@@ -240,11 +380,11 @@ class FastBM25:
 
 
 # ============================================================================
-# Hybrid Retriever with RRF
+# Hybrid Retriever with RRF and Query Expansion
 # ============================================================================
 
 class FastHybridRetriever:
-    """Fast hybrid retrieval with Reciprocal Rank Fusion."""
+    """Fast hybrid retrieval with Reciprocal Rank Fusion and query expansion."""
     
     def __init__(
         self,
@@ -260,31 +400,75 @@ class FastHybridRetriever:
         self.bm25 = FastBM25(chunks, content_key)
         self._chunk_id_to_idx = {c.get('chunk_id', i): i for i, c in enumerate(chunks)}
     
-    def search(self, query: str, top_k: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Hybrid search using RRF."""
+    def _extract_key_terms(self, query: str, character: Optional[str] = None) -> List[str]:
+        """Extract key search terms from a query for multi-query retrieval."""
+        queries = [query]  # Always include original
+        
+        # Add character name as separate query if provided
+        if character:
+            queries.append(character)
+        
+        # Extract quoted phrases
+        quoted = re.findall(r'"([^"]+)"', query)
+        queries.extend(quoted)
+        
+        # Extract possessive relationships (e.g., "Noirtier's mother")
+        possessive = re.findall(r"(\w+)'s\s+(\w+)", query)
+        for owner, owned in possessive:
+            queries.append(f"{owner} {owned}")
+            queries.append(f"{owned} of {owner}")
+        
+        # Extract key entities (capitalized words)
+        caps = re.findall(r'\b([A-Z][a-z]+)\b', query)
+        for cap in caps:
+            if len(cap) > 2 and cap.lower() not in ['the', 'and', 'was', 'his', 'her']:
+                queries.append(cap)
+        
+        return list(set(queries))[:5]  # Limit to 5 queries
+    
+    def search(self, query: str, top_k: Optional[int] = None, character: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Hybrid search using RRF with optional query expansion."""
         k = top_k or self.config.top_k_retrieval
         rrf_k = 60
         
-        bm25_results = self.bm25.search(query, top_k=k * 2)
-        vector_results = self.embedder.search(query, top_k=k * 2)
+        # Get multiple query variants
+        queries = self._extract_key_terms(query, character)
         
-        bm25_ranks = {idx: rank for rank, (idx, _) in enumerate(bm25_results)}
+        # Aggregate results from all queries
+        all_bm25_ranks = {}
+        all_vector_ranks = {}
         
-        vector_ranks = {}
-        for rank, r in enumerate(vector_results):
-            chunk_id = r.get('chunk_id')
-            if chunk_id in self._chunk_id_to_idx:
-                vector_ranks[self._chunk_id_to_idx[chunk_id]] = rank
+        for q_idx, q in enumerate(queries):
+            weight = 1.0 if q_idx == 0 else 0.5  # Primary query gets more weight
+            
+            bm25_results = self.bm25.search(q, top_k=k * 2)
+            for rank, (idx, _) in enumerate(bm25_results):
+                # Lower rank (earlier) is better, so we want min
+                if idx not in all_bm25_ranks:
+                    all_bm25_ranks[idx] = rank * weight
+                else:
+                    all_bm25_ranks[idx] = min(all_bm25_ranks[idx], rank * weight)
+            
+            vector_results = self.embedder.search(q, top_k=k * 2)
+            for rank, r in enumerate(vector_results):
+                chunk_id = r.get('chunk_id')
+                if chunk_id in self._chunk_id_to_idx:
+                    idx = self._chunk_id_to_idx[chunk_id]
+                    if idx not in all_vector_ranks:
+                        all_vector_ranks[idx] = rank * weight
+                    else:
+                        all_vector_ranks[idx] = min(all_vector_ranks[idx], rank * weight)
         
-        all_indices = set(bm25_ranks.keys()) | set(vector_ranks.keys())
+        # RRF fusion
+        all_indices = set(all_bm25_ranks.keys()) | set(all_vector_ranks.keys())
         rrf_scores = {}
         
         for idx in all_indices:
             score = 0.0
-            if idx in bm25_ranks:
-                score += self.config.bm25_weight / (rrf_k + bm25_ranks[idx])
-            if idx in vector_ranks:
-                score += self.config.vector_weight / (rrf_k + vector_ranks[idx])
+            if idx in all_bm25_ranks:
+                score += self.config.bm25_weight / (rrf_k + all_bm25_ranks[idx])
+            if idx in all_vector_ranks:
+                score += self.config.vector_weight / (rrf_k + all_vector_ranks[idx])
             rrf_scores[idx] = score
         
         sorted_indices = sorted(rrf_scores.keys(), key=lambda x: rrf_scores[x], reverse=True)
@@ -304,47 +488,48 @@ class FastHybridRetriever:
 
 class FastClaimVerifier:
     """Verify claims with citation-based evidence checking."""
-    
-    SYSTEM_PROMPT = """You are a fact-checker verifying claims against book passages.
+    SYSTEM_PROMPT="""You verify claims about fictional characters against book evidence.
 
-Your task: Determine if the CLAIM is SUPPORTED, CONTRADICTED, or UNCLEAR based on the EVIDENCE.
+VERDICT OPTIONS:
+- SUPPORTS: Evidence CONFIRMS the claim with matching facts
+- CONTRADICTS: Evidence shows DIFFERENT facts than what the claim states
+- UNCLEAR: Evidence doesn't address this specific topic
 
-CRITICAL RULES FOR DETECTING CONTRADICTIONS:
-1. DATES/TIMES: If claim says "1815" but evidence shows "1811" → CONTRADICTION
-2. NAMES: If claim says "brother" but evidence shows "cousin" → CONTRADICTION  
-3. EVENTS: If claim says "escaped" but evidence shows "captured" → CONTRADICTION
-4. LOCATIONS: If claim says "Paris" but evidence shows "London" → CONTRADICTION
-5. RELATIONSHIPS: If claim says "father" but evidence shows "uncle" → CONTRADICTION
+HOW TO DECIDE:
 
-CRITICAL RULES FOR SUPPORT:
-- Evidence must EXPLICITLY state or strongly imply the claim
-- Just mentioning the same character is NOT support
+1. CONTRADICTS - Use when evidence shows something DIFFERENT:
+   - Claim says "X" but evidence shows "Y" (where X ≠ Y)
+   - Example: Claim "born 1815" but evidence says "born 1811" → CONTRADICTS
+   - Example: Claim "was a baker" but evidence says "was a soldier" → CONTRADICTS
+   - Example: Claim "met in Paris" but evidence says "met in London" → CONTRADICTS
+   - Example: Claim "escaped prison" but evidence says "died in prison" → CONTRADICTS
+   - Example: Claim "father supported revolution" but evidence says "father was royalist" → CONTRADICTS
 
-UNCLEAR means:
-- Evidence doesn't address this specific claim
-- Information is ambiguous or incomplete
+2. SUPPORTS - Use when evidence CONFIRMS the claim:
+   - Evidence explicitly states the same fact as the claim
+   - Evidence strongly implies the claim is true
+   - Must have actual evidence, not just "no contradiction"
 
-OUTPUT FORMAT (you MUST follow this exactly):
+3. UNCLEAR - Use ONLY when:
+   - Evidence is about completely different topics
+   - No information about the claim's subject at all
+   - Evidence is too vague to determine either way
+
+IMPORTANT: If the evidence mentions the topic but with DIFFERENT details, that is CONTRADICTS, not UNCLEAR.
+
+Output format:
 VERDICT: [SUPPORTS/CONTRADICTS/UNCLEAR]
 CONFIDENCE: [0.0-1.0]
-CITATION: [Quote the specific passage that supports your verdict]
-REASONING: [Explain why in 1-2 sentences]"""
+CITATION: ["quote from evidence" or "NONE"]
+REASONING: [brief explanation]"""
 
-    USER_PROMPT = """CLAIM TO VERIFY:
-"{claim}"
+    USER_PROMPT = """CLAIM about {character}: "{claim}"
 
-EVIDENCE PASSAGES FROM THE BOOK:
+EVIDENCE FROM THE BOOK:
 {evidence}
 
-Analyze the evidence carefully. Look for:
-- Any FACTUAL CONFLICTS with the claim (different dates, names, events, relationships)
-- Any passages that CONFIRM the claim
-- Whether the evidence actually addresses the claim at all
-
-VERDICT: [SUPPORTS/CONTRADICTS/UNCLEAR]
-CONFIDENCE: [0.0-1.0]
-CITATION: [Quote the relevant passage]
-REASONING: [Why?]"""
+Analyze: Does the evidence SUPPORT (confirm), CONTRADICT (show different facts), or is UNCLEAR (no relevant info)?
+"""
 
     def __init__(self, llm: GroqLLM, config: Optional[FastVerifierConfig] = None):
         self.llm = llm
@@ -360,12 +545,13 @@ REASONING: [Why?]"""
     ) -> Dict[str, Any]:
         """Verify a claim against evidence with citation checking."""
         
-        # Format evidence with passage numbers for citation
         evidence_parts = []
         for i, e in enumerate(evidence[:self.config.top_k_final]):
-            content = e.get(content_key, '')[:800]
+            content = e.get(content_key, '')[:1000]
             chapter = e.get('chapter', 'Unknown')
-            evidence_parts.append(f"[PASSAGE {i+1}] ({chapter}):\n{content}")
+            page = e.get('page', '?')
+            
+            evidence_parts.append(f"[PASSAGE {i+1}] Chapter: {chapter}, Page: {page}:\n{content}")
         
         evidence_text = "\n\n".join(evidence_parts)
         
@@ -380,7 +566,8 @@ REASONING: [Why?]"""
         
         prompt = self.USER_PROMPT.format(
             claim=claim,
-            evidence=evidence_text
+            evidence=evidence_text,
+            character=character
         )
         
         response = self.llm.generate(
@@ -482,71 +669,125 @@ REASONING: [Why?]"""
 
 
 # ============================================================================
-# Aggregator with improved logic
+# Aggregator - One Error = Contradict
 # ============================================================================
 
 class FastAggregator:
-    """Aggregate verdicts into final prediction."""
+    """Aggregate claim verdicts into final prediction."""
     
-    def aggregate(self, results: List[Dict[str, Any]]) -> Tuple[int, Dict[str, Any]]:
+    # Phrases that indicate false positive contradictions
+    FALSE_POSITIVE_PHRASES = [
+        'same person', 'same individual', 'are the same',
+        'does not directly', 'does not explicitly',
+        'implies', 'suggests', 'may indicate',
+    ]
+    
+    # Phrases that indicate invalid citations
+    BAD_CITATION_PHRASES = ['none', 'no evidence', 'no mention', 'not mentioned', 'does not address']
+    
+    def _is_strong_contradiction(self, r: Dict[str, Any]) -> bool:
+        """Check if result is a strong, well-cited contradiction."""
+        if r['verdict'] != 'contradicts' or r.get('confidence', 0) < 0.75:
+            return False
+        
+        citation = r.get('citation', '')
+        if not citation or len(citation) < 20:
+            return False
+        
+        # Filter invalid citations
+        if any(p in citation.lower()[:60] for p in self.BAD_CITATION_PHRASES):
+            return False
+        
+        # Filter false positive reasoning
+        reasoning = r.get('reasoning', '').lower()
+        if any(p in reasoning for p in self.FALSE_POSITIVE_PHRASES):
+            return False
+        
+        return True
+    
+    def aggregate(self, results: List[Dict[str, Any]], claims: Optional[List[str]] = None) -> Tuple[int, Dict[str, Any]]:
         """
-        Aggregation rules:
-        1. Any high-confidence contradiction (>=0.6) → CONTRADICT
-        2. Multiple contradictions (>=2) → CONTRADICT
-        3. Strong contradiction score vs support score → CONTRADICT
-        4. Otherwise → CONSISTENT
+        Aggregate verdicts: ONE factual error = CONTRADICT.
+        
+        Logic:
+        1. Strong contradiction (high confidence + citation) → CONTRADICT
+        2. Any contradiction with confidence >= 0.6 → CONTRADICT
+        3. No decent contradictions → CONSISTENT
         """
         if not results:
-            return 1, {'reason': 'No claims extracted', 'verdicts': []}
-        
-        # Calculate scores
-        contradiction_score = 0.0
-        support_score = 0.0
-        
-        for r in results:
-            conf = r.get('confidence', 0.5)
-            if r['verdict'] == 'contradicts':
-                contradiction_score += conf
-            elif r['verdict'] == 'supports':
-                support_score += conf
+            return 1, {
+                'reason': 'No claims extracted',
+                'verdicts': [],
+                'explanation': "PREDICTION: CONSISTENT (Default)\nNo verifiable claims found."
+            }
         
         # Count verdicts
-        verdicts = [r['verdict'] for r in results]
-        n_contradicts = verdicts.count('contradicts')
-        n_supports = verdicts.count('supports')
-        n_unclear = verdicts.count('unclear')
+        n_contradicts = sum(1 for r in results if r['verdict'] == 'contradicts')
+        n_supports = sum(1 for r in results if r['verdict'] == 'supports')
+        n_unclear = sum(1 for r in results if r['verdict'] == 'unclear')
         
-        # Check for high-confidence contradictions
-        high_conf_contradict = any(
-            r['verdict'] == 'contradicts' and r.get('confidence', 0) >= 0.6
-            for r in results
+        # Find strong contradiction (early stop)
+        early_stop = None
+        for i, r in enumerate(results):
+            if self._is_strong_contradiction(r):
+                claim_text = claims[i] if claims and i < len(claims) else f"Claim {i+1}"
+                early_stop = (i, r, claim_text)
+                break
+        
+        # Find any contradiction with decent confidence (0.6+)
+        decent_contradiction = None
+        for i, r in enumerate(results):
+            if r['verdict'] == 'contradicts' and r.get('confidence', 0) >= 0.6:
+                claim_text = claims[i] if claims and i < len(claims) else f"Claim {i+1}"
+                decent_contradiction = (i, r, claim_text)
+                break
+        
+        # DECISION: One factual error = CONTRADICT
+        if early_stop:
+            idx, r, claim_text = early_stop
+            return 0, self._build_result(
+                reason=f"Strong contradiction (claim {idx+1})",
+                prediction="CONTRADICT",
+                claim_info=(idx, r, claim_text),
+                counts=(n_contradicts, n_supports, n_unclear)
+            )
+        
+        if decent_contradiction:
+            idx, r, claim_text = decent_contradiction
+            return 0, self._build_result(
+                reason=f"Contradiction found (claim {idx+1}, conf {r.get('confidence', 0):.2f})",
+                prediction="CONTRADICT",
+                claim_info=(idx, r, claim_text),
+                counts=(n_contradicts, n_supports, n_unclear)
+            )
+        
+        # No contradictions → CONSISTENT
+        return 1, self._build_result(
+            reason=f"Consistent ({n_supports} supports, {n_unclear} unclear)",
+            prediction="CONSISTENT",
+            counts=(n_contradicts, n_supports, n_unclear)
         )
+    
+    def _build_result(self, reason: str, prediction: str, counts: tuple,
+                      claim_info: Optional[tuple] = None) -> Dict[str, Any]:
+        """Build aggregation result dictionary."""
+        n_contradicts, n_supports, n_unclear = counts
         
-        # Check for contradictions with citations (more reliable)
-        cited_contradict = any(
-            r['verdict'] == 'contradicts' and r.get('citation') and len(r.get('citation', '')) > 20
-            for r in results
-        )
+        parts = [f"PREDICTION: {prediction}", f"REASON: {reason}"]
         
-        # Decision logic
-        if high_conf_contradict or cited_contradict:
-            prediction = 0
-            reason = f"High-confidence contradiction found"
-        elif n_contradicts >= 2:
-            prediction = 0
-            reason = f"Multiple contradictions ({n_contradicts})"
-        elif contradiction_score > support_score * 1.2 and n_contradicts >= 1:
-            prediction = 0
-            reason = f"Contradiction score ({contradiction_score:.2f}) > support ({support_score:.2f})"
+        if claim_info:
+            idx, r, claim_text = claim_info
+            parts.append(f"\nClaim: \"{claim_text[:100]}\"")
+            parts.append(f"Confidence: {r.get('confidence', 0):.2f}")
+            if r.get('citation'):
+                parts.append(f"Citation: \"{r['citation'][:120]}\"")
         else:
-            prediction = 1
-            reason = f"Consistent ({n_supports} supports, {n_unclear} unclear, {n_contradicts} contradicts)"
+            parts.append(f"\nSupports: {n_supports} | Unclear: {n_unclear} | Contradicts: {n_contradicts}")
         
-        return prediction, {
+        return {
             'reason': reason,
-            'verdicts': results,
-            'counts': {'contradicts': n_contradicts, 'supports': n_supports, 'unclear': n_unclear},
-            'scores': {'contradiction': contradiction_score, 'support': support_score}
+            'explanation': "\n".join(parts),
+            'counts': {'contradicts': n_contradicts, 'supports': n_supports, 'unclear': n_unclear}
         }
 
 
@@ -555,13 +796,14 @@ class FastAggregator:
 # ============================================================================
 
 class FastVerificationPipeline:
-    """Optimized verification pipeline with parallel processing."""
+    """Optimized verification pipeline with parallel processing and result logging."""
     
     def __init__(
         self,
         chunks: List[Dict[str, Any]],
         embedder,
-        config: Optional[FastVerifierConfig] = None
+        config: Optional[FastVerifierConfig] = None,
+        output_dir: str = "verification_results"
     ):
         self.config = config or DEFAULT_FAST_CONFIG
         self.chunks = chunks
@@ -573,14 +815,18 @@ class FastVerificationPipeline:
         self.retriever = FastHybridRetriever(chunks, embedder, config)
         self.verifier = FastClaimVerifier(self.llm, config)
         self.aggregator = FastAggregator()
-        print("Pipeline ready!")
+        self.result_logger = ResultLogger(output_dir)
+        print(f"Pipeline ready! Results will be saved to: {output_dir}/")
     
     def verify_backstory(
         self,
         backstory: str,
         character: str,
         book_name: str,
-        verbose: bool = True
+        sample_id: Any = None,
+        true_label: Optional[str] = None,
+        verbose: bool = True,
+        save_results: bool = True
     ) -> Tuple[int, Dict[str, Any]]:
         """Verify a backstory against the book."""
         start_time = time.time()
@@ -599,16 +845,39 @@ class FastVerificationPipeline:
                 print(f"   [{i+1}] {c[:80]}...")
         
         if not claims:
-            return 1, {
+            elapsed = time.time() - start_time
+            explanation = (
+                "PREDICTION: CONSISTENT (Default)\n"
+                "REASON: No verifiable claims could be extracted from the backstory.\n"
+                "EXPLANATION: The backstory may be too vague or contain no specific facts."
+            )
+            details = {
                 'reason': 'No claims extracted', 
-                'elapsed': time.time() - start_time,
+                'explanation': explanation,
+                'elapsed': elapsed,
                 'claims': []
             }
+            
+            if save_results:
+                self.result_logger.log_verification(
+                    sample_id=sample_id or "unknown",
+                    character=character,
+                    book_name=book_name,
+                    backstory=backstory,
+                    claims=[],
+                    claim_results=[],
+                    prediction=1,
+                    prediction_explanation=explanation,
+                    true_label=true_label,
+                    elapsed_time=elapsed
+                )
+            
+            return 1, details
         
-        # 2. Retrieve evidence for all claims
+        # 2. Retrieve evidence for all claims (with character-aware query expansion)
         if verbose:
             print("\n2. Retrieving evidence...")
-        claim_evidence = [(claim, self.retriever.search(claim)) for claim in claims]
+        claim_evidence = [(claim, self.retriever.search(claim, character=character)) for claim in claims]
         
         # 3. Verify claims in parallel
         if verbose:
@@ -616,7 +885,19 @@ class FastVerificationPipeline:
         
         def verify_single(args):
             idx, claim, evidence = args
-            return idx, self.verifier.verify(claim, evidence, character, book_name)
+            result = self.verifier.verify(claim, evidence, character, book_name)
+            # Add evidence metadata for logging
+            result['evidence_metadata'] = [
+                {
+                    'chunk_id': e.get('chunk_id'),
+                    'story': e.get('story'),
+                    'chapter': e.get('chapter'),
+                    'page': e.get('page'),
+                    'score': e.get('rrf_score', e.get('score', 0))
+                }
+                for e in evidence[:self.config.top_k_final]
+            ]
+            return idx, result
         
         results: List[Optional[Dict[str, Any]]] = [None] * len(claims)
         with ThreadPoolExecutor(max_workers=self.config.parallel_workers) as executor:
@@ -637,19 +918,39 @@ class FastVerificationPipeline:
         # Filter out None results (failed verifications)
         valid_results: List[Dict[str, Any]] = [r for r in results if r is not None]
         
-        # 4. Aggregate
-        prediction, details = self.aggregator.aggregate(valid_results)
+        # 4. Aggregate with claims for detailed explanation
+        prediction, details = self.aggregator.aggregate(valid_results, claims)
         
         elapsed = time.time() - start_time
         details['elapsed'] = elapsed
         details['claims'] = claims
         details['llm_stats'] = self.llm.get_stats()
         
+        # 5. Save detailed results to file
+        if save_results:
+            self.result_logger.log_verification(
+                sample_id=sample_id or "unknown",
+                character=character,
+                book_name=book_name,
+                backstory=backstory,
+                claims=claims,
+                claim_results=valid_results,
+                prediction=prediction,
+                prediction_explanation=details.get('explanation', details.get('reason', '')),
+                true_label=true_label,
+                elapsed_time=elapsed,
+                additional_metadata={'llm_stats': self.llm.get_stats()}
+            )
+        
         if verbose:
             print(f"\n{'='*50}")
             print(f"PREDICTION: {prediction} ({'CONSISTENT' if prediction == 1 else 'CONTRADICT'})")
             print(f"Reason: {details['reason']}")
-            print(f"Time: {elapsed:.1f}s | LLM calls: {self.llm.call_count}")
+            if details.get('explanation'):
+                print(f"\n--- DETAILED EXPLANATION ---")
+                print(details['explanation'])
+                print(f"--- END EXPLANATION ---")
+            print(f"\nTime: {elapsed:.1f}s | LLM calls: {self.llm.call_count}")
         
         return prediction, details
 
@@ -659,7 +960,7 @@ class FastVerificationPipeline:
 # ============================================================================
 
 class FastEvaluator:
-    """Evaluate pipeline on dataset."""
+    """Evaluate pipeline on dataset with detailed result logging."""
     
     def __init__(self, pipeline: FastVerificationPipeline):
         self.pipeline = pipeline
@@ -669,14 +970,16 @@ class FastEvaluator:
         self,
         samples: List[Dict[str, Any]],
         max_samples: Optional[int] = None,
-        verbose: bool = True
+        verbose: bool = True,
+        save_results: bool = True
     ) -> Dict[str, Any]:
-        """Run evaluation."""
+        """Run evaluation with detailed logging to numbered files."""
         if max_samples:
             samples = samples[:max_samples]
         
         print(f"\n{'='*60}")
         print(f"KDSH Track A - Evaluating {len(samples)} samples")
+        print(f"Results will be saved to: {self.pipeline.result_logger.output_dir}/")
         print(f"{'='*60}")
         
         label_map = {'consistent': 1, 'contradict': 0}
@@ -684,38 +987,47 @@ class FastEvaluator:
         for i, sample in enumerate(samples):
             print(f"\n[{i+1}/{len(samples)}] Sample {sample['id']} - {sample['char']}")
             
-            true_label = label_map.get(sample['label'], -1)
+            true_label_num = label_map.get(sample['label'], -1)
             
             try:
                 prediction, details = self.pipeline.verify_backstory(
                     backstory=sample['content'],
                     character=sample['char'],
                     book_name=sample['book_name'],
-                    verbose=verbose
+                    sample_id=sample['id'],
+                    true_label=sample['label'],
+                    verbose=verbose,
+                    save_results=save_results
                 )
             except Exception as e:
                 print(f"Error processing sample: {e}")
                 prediction = 1
-                details = {'error': str(e)}
+                details = {'error': str(e), 'explanation': f"Error occurred: {str(e)}"}
             
-            correct = prediction == true_label
+            correct = prediction == true_label_num
             status = "✓" if correct else "✗"
             
-            self.results.append({
+            # Store result with explanation
+            result_entry = {
                 'id': sample['id'],
                 'character': sample['char'],
                 'book': sample['book_name'],
                 'true_label': sample['label'],
                 'prediction': 'consistent' if prediction == 1 else 'contradict',
                 'correct': correct,
+                'explanation': details.get('explanation', details.get('reason', 'No explanation')),
                 'details': details
-            })
+            }
+            self.results.append(result_entry)
             
-            print(f"\n{status} Result: True={sample['label']}, Pred={'consistent' if prediction == 1 else 'contradict'}")
+            # Print result with brief explanation
+            pred_label = 'consistent' if prediction == 1 else 'contradict'
+            print(f"\n{status} Result: True={sample['label']}, Pred={pred_label}")
+            print(f"   Brief: {details.get('reason', 'No reason provided')}")
         
         # Summary
-        correct = sum(1 for r in self.results if r['correct'])
-        accuracy = correct / len(self.results) if self.results else 0
+        correct_count = sum(1 for r in self.results if r['correct'])
+        accuracy = correct_count / len(self.results) if self.results else 0
         
         consistent_samples = [r for r in self.results if r['true_label'] == 'consistent']
         contradict_samples = [r for r in self.results if r['true_label'] == 'contradict']
@@ -728,22 +1040,25 @@ class FastEvaluator:
         print(f"\n{'='*60}")
         print(f"FINAL RESULTS")
         print(f"{'='*60}")
-        print(f"Overall Accuracy:    {correct}/{len(self.results)} ({accuracy:.1%})")
+        print(f"Overall Accuracy:    {correct_count}/{len(self.results)} ({accuracy:.1%})")
         print(f"Consistent Accuracy: {consistent_acc:.1%}")
         print(f"Contradict Accuracy: {contradict_acc:.1%}")
         print(f"{'='*60}")
         print(f"LLM calls: {llm_stats['call_count']} | Total time: {llm_stats['total_time']:.1f}s")
         print(f"Avg per call: {llm_stats['avg_time']:.2f}s | Errors: {llm_stats['errors']}")
         print(f"{'='*60}")
+        print(f"📁 Detailed results saved to: {self.pipeline.result_logger.output_dir}/test_*.json")
+        print(f"{'='*60}")
         
         return {
             'accuracy': accuracy,
             'consistent_accuracy': consistent_acc,
             'contradict_accuracy': contradict_acc,
-            'correct': correct,
+            'correct': correct_count,
             'total': len(self.results),
             'results': self.results,
-            'llm_stats': llm_stats
+            'llm_stats': llm_stats,
+            'output_dir': str(self.pipeline.result_logger.output_dir)
         }
 
 

@@ -30,3 +30,4 @@ Thumbs.db
 # Project specific
 *.log
 results.csv
+verification_results/

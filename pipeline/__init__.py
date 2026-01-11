@@ -5,24 +5,10 @@ from .chunker import BookChunker, ChunkConfig, chunk_text, chunk_books
 from .embedder import (
     NomicEmbedder,
     ChunkEmbedder,
-    PathwayVectorIndex,
     EmbedderConfig,
     TaskType
 )
-from .verifier import (
-    VerificationPipeline,
-    VerifierConfig,
-    ClaimExtractor,
-    QueryGenerator,
-    HybridRetriever,
-    BM25Retriever,
-    Reranker,
-    ClaimVerifier,
-    Aggregator,
-    Evaluator,
-    LlamaLLM,
-    VerificationResult
-)
+# Verifier imports removed - using verifier_fast.py instead
 
 __all__ = [
     # Loader
@@ -37,20 +23,6 @@ __all__ = [
     # Embedder
     'NomicEmbedder',
     'ChunkEmbedder',
-    'PathwayVectorIndex',
     'EmbedderConfig',
     'TaskType',
-    # Verifier
-    'VerificationPipeline',
-    'VerifierConfig',
-    'ClaimExtractor',
-    'QueryGenerator',
-    'HybridRetriever',
-    'BM25Retriever',
-    'Reranker',
-    'ClaimVerifier',
-    'Aggregator',
-    'Evaluator',
-    'LlamaLLM',
-    'VerificationResult',
 ]

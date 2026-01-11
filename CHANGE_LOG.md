@@ -31,6 +31,28 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 | test31 | 65.0% | 96.0% | 13.3% | Aggressive filtering - too conservative |
 | test32 | **75.0%** | **76.0%** | **73.3%** | **🎉 BOTH >60%!** on 40 samples |
 | test33 | 65.0% | 74.5% | 48.3% | Full 80 - contradict at 48.3% (below 60%) |
+| test34 | 61.3% | 66.7% | 51.7% | Full 80 - consistent pattern ~50% contradict |
+
+---
+
+## Current Status Summary
+**Goal**: 60%+ on BOTH consistent and contradict classes.
+
+**Best Results**:
+- On 40 samples: test32 achieved 76% consistent, 73.3% contradict ✅
+- On 80 samples: ~65% overall, ~70% consistent, ~50% contradict
+
+**Analysis**:
+- 40-sample results achieve goal but 80-sample results don't scale
+- Missed contradictions often involve inference-based detection
+- Some contradictions have fabricated details with no direct counter-evidence
+- LLM occasionally hallucinates contradictions on consistent samples
+
+**Key Components Working**:
+1. Verification prompt with clear CONTRADICTS vs UNCLEAR distinction
+2. Biographical query expansion for better retrieval
+3. False positive filtering for "same person" and "does not directly" patterns
+4. Aggregation: single 0.6+ contradiction = CONTRADICT
 
 ---
 

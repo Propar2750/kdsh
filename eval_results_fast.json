@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-01-11T13:29:58.011467",
-  "accuracy": 0.65,
-  "correct": 52,
+  "timestamp": "2026-01-11T13:38:32.408519",
+  "accuracy": 0.6125,
+  "correct": 49,
   "total": 80,
   "llm_stats": {
     "call_count": 469,
-    "total_time": 272.00558853149414,
-    "avg_time": 0.5799692719221623,
+    "total_time": 277.01361870765686,
+    "avg_time": 0.5906473746431916,
     "errors": 0
   },
   "results": [
@@ -91,8 +91,8 @@
     {
       "id": 88,
       "true": "consistent",
-      "pred": "contradict",
-      "correct": false
+      "pred": "consistent",
+      "correct": true
     },
     {
       "id": 67,
@@ -103,8 +103,8 @@
     {
       "id": 112,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 79,
@@ -121,8 +121,8 @@
     {
       "id": 12,
       "true": "contradict",
-      "pred": "contradict",
-      "correct": true
+      "pred": "consistent",
+      "correct": false
     },
     {
       "id": 13,
@@ -133,8 +133,8 @@
     {
       "id": 102,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 92,
@@ -181,8 +181,8 @@
     {
       "id": 34,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 99,
@@ -253,8 +253,8 @@
     {
       "id": 19,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 113,
@@ -289,8 +289,8 @@
     {
       "id": 6,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 76,
@@ -301,8 +301,8 @@
     {
       "id": 17,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 20,
@@ -367,8 +367,8 @@
     {
       "id": 57,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 106,
@@ -409,8 +409,8 @@
     {
       "id": 96,
       "true": "contradict",
-      "pred": "consistent",
-      "correct": false
+      "pred": "contradict",
+      "correct": true
     },
     {
       "id": 45,
@@ -481,8 +481,8 @@
     {
       "id": 130,
       "true": "contradict",
-      "pred": "contradict",
-      "correct": true
+      "pred": "consistent",
+      "correct": false
     },
     {
       "id": 48,

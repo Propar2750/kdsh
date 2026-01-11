@@ -23,6 +23,33 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 | test21 | 54.0% | 67.7% | 31.6% | Degraded on 50 samples - not representative |
 | test24 | 60.0% | 96.0% | 0.0% | **CRITICAL** - 0% contradict, prompt too conservative |
 | test25 | 60.0% | 52.0% | 73.3% | Swung too far - now too many false positives |
+| test26 | 67.5% | 96.0% | 20.0% | Swung back - missing contradictions again |
+
+---
+
+## Change #11: Sharper CONTRADICTS vs UNCLEAR distinction
+**Date**: Latest iteration
+
+**Problem Identified**:
+- test26: 96% consistent, 20% contradict - back to missing contradictions
+- Analysis: LLM found conflicting evidence but marked UNCLEAR instead of CONTRADICTS
+- Example: Claim "arrested in 1815", evidence "arrested in 1811" → LLM said UNCLEAR
+- The reasoning found the difference but didn't classify it as contradiction
+
+**Root Cause**:
+The prompt gave too many examples of UNCLEAR (fabricated details), making LLM default to UNCLEAR even when real conflicts exist.
+
+**Solution**:
+Restructured prompt to be more decisive:
+1. Moved KEY RULES for CONTRADICTS to top (dates, facts, opposite statements)
+2. IMPORTANT callout: "If claim states specific fact and evidence shows DIFFERENT specific fact about SAME topic → CONTRADICTS"
+3. Clearer examples showing the same-topic/different-fact pattern
+4. User prompt reinforces: "If evidence shows DIFFERENT facts about SAME topic → CONTRADICTS"
+
+**Expected Impact**:
+- LLM should recognize that different dates/facts about same topic = CONTRADICTS
+- Maintain UNCLEAR for truly fabricated/absent topics
+- Better balance between the two classes
 
 ---
 

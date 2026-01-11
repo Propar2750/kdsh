@@ -25,6 +25,19 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 | test25 | 60.0% | 52.0% | 73.3% | Swung too far - now too many false positives |
 | test26 | 67.5% | 96.0% | 20.0% | Swung back - missing contradictions again |
 | test27 | 72.5% | 72.0% | 73.3% | **🎉 BOTH >60%!** Balanced prompt working |
+| test28 | 65.0% | 72.5% | 51.7% | Full 80 samples - contradict dropped below 60% |
+
+---
+
+## Analysis: Why test28 contradict dropped
+
+Looking at missed contradictions (e.g., test_42 - Faria):
+- Claim: "born in Parma" vs Book: "born at Rome" 
+- Problem: Retrieval didn't find the "born at Rome" passage
+- All 5 claims marked UNCLEAR → aggregator defaults to CONSISTENT
+
+**Root Cause**: Retrieval not finding relevant evidence for some contradiction patterns.
+**Next Step**: Improve retrieval targeting or adjust aggregation for edge cases.
 
 ---
 

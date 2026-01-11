@@ -491,36 +491,37 @@ class FastClaimVerifier:
     SYSTEM_PROMPT="""You verify claims about fictional characters against book evidence.
 
 VERDICT OPTIONS:
-- SUPPORTS: Evidence CONFIRMS the claim with matching facts
-- CONTRADICTS: Evidence shows DIFFERENT facts than what the claim states
-- UNCLEAR: Evidence doesn't address this specific topic
+- SUPPORTS: Evidence CONFIRMS the claim is true
+- CONTRADICTS: Evidence provides CONFLICTING FACTS
+- UNCLEAR: Evidence doesn't address this topic
 
-HOW TO DECIDE:
+CRITICAL RULE - WHAT IS A CONTRADICTION:
+A contradiction requires CONFLICTING EVIDENCE, not missing evidence.
+- CONTRADICTION: Claim says "X", evidence says "NOT X" or "Y instead of X"
+- NOT a contradiction: Claim says "X", evidence doesn't mention X at all
 
-1. CONTRADICTS - Use when evidence shows something DIFFERENT:
-   - Claim says "X" but evidence shows "Y" (where X ≠ Y)
-   - Example: Claim "born 1815" but evidence says "born 1811" → CONTRADICTS
-   - Example: Claim "was a baker" but evidence says "was a soldier" → CONTRADICTS
-   - Example: Claim "met in Paris" but evidence says "met in London" → CONTRADICTS
-   - Example: Claim "escaped prison" but evidence says "died in prison" → CONTRADICTS
-   - Example: Claim "father supported revolution" but evidence says "father was royalist" → CONTRADICTS
+Examples of CONTRADICTS:
+- Claim "born 1815" vs evidence "born 1811" → CONTRADICTS (different dates)
+- Claim "was a baker" vs evidence "was a soldier" → CONTRADICTS (different jobs)
+- Claim "father was royalist" vs evidence "father supported revolution" → CONTRADICTS
 
-2. SUPPORTS - Use when evidence CONFIRMS the claim:
-   - Evidence explicitly states the same fact as the claim
-   - Evidence strongly implies the claim is true
-   - Must have actual evidence, not just "no contradiction"
+Examples of UNCLEAR (NOT contradicts):
+- Claim "rescued elder Yurook" but evidence never mentions Yurook → UNCLEAR
+- Claim "secretly mapped outposts" but evidence doesn't mention mapping → UNCLEAR
+- Claim "mother was killed" but evidence never mentions the mother → UNCLEAR
+- Fabricated details not in the book → UNCLEAR
 
-3. UNCLEAR - Use ONLY when:
-   - Evidence is about completely different topics
-   - No information about the claim's subject at all
-   - Evidence is too vague to determine either way
+Examples of SUPPORTS:
+- Claim "was imprisoned" and evidence says "thrown into prison" → SUPPORTS
+- Claim "escaped" and evidence describes the escape → SUPPORTS
 
-IMPORTANT: If the evidence mentions the topic but with DIFFERENT details, that is CONTRADICTS, not UNCLEAR.
+REMEMBER: You can only CONTRADICT if the evidence says something DIFFERENT.
+Silence on a topic is UNCLEAR, not CONTRADICTS.
 
 Output format:
 VERDICT: [SUPPORTS/CONTRADICTS/UNCLEAR]
 CONFIDENCE: [0.0-1.0]
-CITATION: ["quote from evidence" or "NONE"]
+CITATION: ["exact quote showing conflict" or "NONE"]
 REASONING: [brief explanation]"""
 
     USER_PROMPT = """CLAIM about {character}: "{claim}"
@@ -528,8 +529,8 @@ REASONING: [brief explanation]"""
 EVIDENCE FROM THE BOOK:
 {evidence}
 
-Analyze: Does the evidence SUPPORT (confirm), CONTRADICT (show different facts), or is UNCLEAR (no relevant info)?
-"""
+Does the evidence SUPPORT, CONTRADICT, or is UNCLEAR about this claim?
+Remember: Only CONTRADICTS if evidence shows DIFFERENT facts. No mention = UNCLEAR."""
 
     def __init__(self, llm: GroqLLM, config: Optional[FastVerifierConfig] = None):
         self.llm = llm

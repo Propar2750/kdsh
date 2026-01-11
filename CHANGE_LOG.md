@@ -22,6 +22,32 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 | test20 | 70.0% | 77.8% | 58.3% | **Best on 30 samples** - improved prompt |
 | test21 | 54.0% | 67.7% | 31.6% | Degraded on 50 samples - not representative |
 | test24 | 60.0% | 96.0% | 0.0% | **CRITICAL** - 0% contradict, prompt too conservative |
+| test25 | 60.0% | 52.0% | 73.3% | Swung too far - now too many false positives |
+
+---
+
+## Change #10: Clarify Absence vs Contradiction
+**Date**: Latest iteration
+
+**Problem Identified**:
+- test25: 52% consistent, 73% contradict - too many false positives
+- Analysis showed LLM marking CONTRADICTS when there's no evidence (fabricated details)
+- Example: "rescued elder Yurook" → LLM said CONTRADICTS because "evidence doesn't mention Yurook"
+- This is incorrect logic: absence of evidence is NOT contradiction
+
+**Root Cause**:
+The prompt said "CONTRADICTS = Evidence shows DIFFERENT facts" but LLM interpreted 
+"no mention of X" as "different from X". Need to make distinction crystal clear.
+
+**Solution**:
+Rewrote prompt with explicit examples of what is and isn't a contradiction:
+1. Added CRITICAL RULE: "A contradiction requires CONFLICTING EVIDENCE, not missing evidence"
+2. Added examples of UNCLEAR (fabricated details): "rescued Yurook but evidence never mentions Yurook → UNCLEAR"
+3. Added reminder in user prompt: "Only CONTRADICTS if evidence shows DIFFERENT facts. No mention = UNCLEAR"
+
+**Expected Impact**:
+- Fewer false positives on consistent samples (fabricated details → UNCLEAR, not CONTRADICTS)
+- Should maintain ability to catch real contradictions (conflicting facts)
 
 ---
 

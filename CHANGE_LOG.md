@@ -28,6 +28,8 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 | test28 | 65.0% | 72.5% | 51.7% | Full 80 samples - contradict dropped below 60% |
 | test29 | 70.0% | 68.0% | 73.3% | **BOTH >60%** on 40 samples with bio retrieval |
 | test30 | 61.3% | 66.7% | 51.7% | Full 80 - contradict dropped again |
+| test31 | 65.0% | 96.0% | 13.3% | Aggressive filtering - too conservative |
+| test32 | **75.0%** | **76.0%** | **73.3%** | **🎉 BOTH >60%!** Reverted to minimal filter |
 
 ---
 

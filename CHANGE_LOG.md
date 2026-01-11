@@ -39,6 +39,7 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 | test40 | 67.5% | 68.0% | 66.7% | **BOTH >60%** on 40 samples - improved false positive filtering |
 | test41 | 61.3% | 68.6% | 48.3% | Full 80 - contradict still ~48% |
 | test44 | **63.8%** | **68.6%** | **55.2%** | Full 80 - improved prompt with verification priority |
+| test45 | 58.8% | 66.7% | 44.8% | ❌ FAILED - "detective" instruction degraded contradict |
 
 ---
 
@@ -59,13 +60,36 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 2. Biographical query expansion for retrieval
 3. False positive filtering for "same person", "no mention of", etc.
 4. Weak contradiction tier (0.5-0.6 confidence with citations)
-4. Weak contradiction tier (0.5-0.6 confidence with citations)
 
 **Key Components Working**:
 1. Verification prompt with clear CONTRADICTS vs UNCLEAR distinction
 2. Biographical query expansion for better retrieval
 3. False positive filtering for "same person" and "does not directly" patterns
 4. Aggregation: single 0.6+ contradiction = CONTRADICT
+
+---
+
+## Change #14: ❌ FAILED - More aggressive contradiction detection
+**Date**: test45
+
+**Problem Identified**:
+- test44 achieved 68.6% consistent, 55.2% contradict
+- Still below 60% contradict target
+
+**Solution Attempted**:
+Modified system prompt to be more aggressive in detecting contradictions.
+
+**Result**: test45 - 58.8% overall, 66.7% consistent, 44.8% contradict
+- **DEGRADED**: Contradict dropped from 55.2% to 44.8% (-10.4%)
+- Overall accuracy dropped from 63.8% to 58.8% (-5%)
+
+**Analysis**: 
+Making the prompt more aggressive backfired - likely caused the LLM to be less precise
+or introduced confusion, leading to more false negatives (missed contradictions).
+
+**Decision**: Reverted this change - keeping test44 as best configuration.
+
+**Note**: Detective-style instruction planned for next run (test46).
 
 ---
 

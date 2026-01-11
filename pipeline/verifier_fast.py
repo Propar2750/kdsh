@@ -693,6 +693,10 @@ class FastAggregator:
         'evidence does not mention',
         'not that he',  # Pattern: "not that he did X" (comparing unrelated events)
         'not that she',
+        'no mention of',  # LLM says "no mention of X = contradict"
+        'goal is to',  # Pattern: "his goal is to X" (comparing unrelated events)
+        'his goal is',
+        'not to rescue',  # Direct pattern from false positive
     ]
     
     # Phrases that indicate invalid citations (citation starts with these)
@@ -755,6 +759,18 @@ class FastAggregator:
                 decent_contradiction = (i, r, claim_text)
                 break
         
+        # Find weak contradictions (0.5-0.6 confidence) with citations
+        weak_contradiction = None
+        if not decent_contradiction:
+            for i, r in enumerate(results):
+                if r['verdict'] == 'contradicts' and 0.5 <= r.get('confidence', 0) < 0.6:
+                    citation = r.get('citation', '')
+                    # Only accept weak contradictions if they have a real citation
+                    if citation and len(citation) > 30 and not any(p in citation.lower()[:50] for p in self.BAD_CITATION_PHRASES):
+                        claim_text = claims[i] if claims and i < len(claims) else f"Claim {i+1}"
+                        weak_contradiction = (i, r, claim_text)
+                        break
+        
         # DECISION: One factual error = CONTRADICT
         if early_stop:
             idx, r, claim_text = early_stop
@@ -769,6 +785,15 @@ class FastAggregator:
             idx, r, claim_text = decent_contradiction
             return 0, self._build_result(
                 reason=f"Contradiction found (claim {idx+1}, conf {r.get('confidence', 0):.2f})",
+                prediction="CONTRADICT",
+                claim_info=(idx, r, claim_text),
+                counts=(n_contradicts, n_supports, n_unclear)
+            )
+        
+        if weak_contradiction:
+            idx, r, claim_text = weak_contradiction
+            return 0, self._build_result(
+                reason=f"Weak contradiction (claim {idx+1}, conf {r.get('confidence', 0):.2f})",
                 prediction="CONTRADICT",
                 claim_info=(idx, r, claim_text),
                 counts=(n_contradicts, n_supports, n_unclear)

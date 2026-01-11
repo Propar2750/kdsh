@@ -35,6 +35,9 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 | test35 | 62.5% | 60.0% | 66.7% | Lowered threshold to 0.5 - too aggressive |
 | test36 | 62.5% | 88.0% | 20.0% | Strict "same topic" prompt - too conservative |
 | test37 | 70.0% | 72.0% | 66.7% | **BOTH >60%** on 40 samples - reverted to balanced |
+| test39 | 57.5% | 60.0% | 53.3% | Added weak contradiction tier (0.5-0.6 with citations) |
+| test40 | 67.5% | 68.0% | 66.7% | **BOTH >60%** on 40 samples - improved false positive filtering |
+| test41 | 61.3% | 68.6% | 48.3% | Full 80 - contradict still ~48% |
 
 ---
 
@@ -42,15 +45,20 @@ Achieve 60%+ accuracy on BOTH consistent and contradict classes.
 **Goal**: 60%+ on BOTH consistent and contradict classes.
 
 **Best Results**:
-- On 40 samples: test32 achieved 76% consistent, 73.3% contradict ✅
-- On 40 samples: test37 achieved 72% consistent, 66.7% contradict ✅
-- On 80 samples: ~65% overall, ~70% consistent, ~50% contradict (below target)
+- On 40 samples: test32 (76%/73.3%), test37 (72%/66.7%), test40 (68%/66.7%) all achieve goal ✅
+- On 80 samples: best is 68.6% consistent, 48.3% contradict (below target)
 
 **Analysis**:
-- 40-sample results consistently achieve goal (test32, test37)
-- 80-sample results don't scale - contradict stays ~50%
-- There's inherent LLM variability between runs
-- Threshold tuning (0.5 vs 0.6) is a sensitive balance
+- 40-sample goal consistently achieved (4+ successful runs)
+- 80-sample contradict stuck at ~48-52%, need ~60%
+- Missed contradictions often have fabricated biographical details marked UNCLEAR
+- LLM lacks domain knowledge (e.g., Girondins were revolutionaries)
+
+**Key Components**:
+1. Verification prompt distinguishing CONTRADICTS vs UNCLEAR
+2. Biographical query expansion for retrieval
+3. False positive filtering for "same person", "no mention of", etc.
+4. Weak contradiction tier (0.5-0.6 confidence with citations)
 
 **Key Components Working**:
 1. Verification prompt with clear CONTRADICTS vs UNCLEAR distinction

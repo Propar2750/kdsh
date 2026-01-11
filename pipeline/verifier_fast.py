@@ -42,8 +42,9 @@ class FastVerifierConfig:
     # Verification settings
     max_claims: int = 5
     
-    # Retry settings
+    # Retry settings (premium tier - higher limits)
     max_retries: int = 3
+    parallel_workers: int = 10  # Premium tier allows more concurrent requests
 
 
 DEFAULT_FAST_CONFIG = FastVerifierConfig()
@@ -110,12 +111,11 @@ class GroqLLM:
                 result = content.strip() if content else "UNCLEAR"
                 break
                 
-            except Exception as e:
+            except Exception:
                 self.errors += 1
                 if attempt < self.config.max_retries:
-                    time.sleep(1)
+                    time.sleep(0.5 * (attempt + 1))  # Short backoff for premium
                 else:
-                    print(f"Groq API error after {self.config.max_retries + 1} attempts: {e}")
                     result = "ERROR"
         
         elapsed = time.time() - start
@@ -618,8 +618,8 @@ class FastVerificationPipeline:
             idx, claim, evidence = args
             return idx, self.verifier.verify(claim, evidence, character, book_name)
         
-        results = [None] * len(claims)
-        with ThreadPoolExecutor(max_workers=min(5, len(claims))) as executor:
+        results: List[Optional[Dict[str, Any]]] = [None] * len(claims)
+        with ThreadPoolExecutor(max_workers=self.config.parallel_workers) as executor:
             futures = {
                 executor.submit(verify_single, (i, claim, evidence)): i
                 for i, (claim, evidence) in enumerate(claim_evidence)
@@ -635,10 +635,10 @@ class FastVerificationPipeline:
                     print(f"   Error verifying claim: {e}")
         
         # Filter out None results (failed verifications)
-        results = [r for r in results if r is not None]
+        valid_results: List[Dict[str, Any]] = [r for r in results if r is not None]
         
         # 4. Aggregate
-        prediction, details = self.aggregator.aggregate(results)
+        prediction, details = self.aggregator.aggregate(valid_results)
         
         elapsed = time.time() - start_time
         details['elapsed'] = elapsed

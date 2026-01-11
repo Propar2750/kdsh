@@ -18,6 +18,8 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 
+from typing import Any, Dict, List
+
 from pipeline.loader import load_books
 from pipeline.chunker import BookChunker, ChunkConfig
 from pipeline.embedder import ChunkEmbedder
@@ -118,7 +120,7 @@ def main():
     
     # Load samples
     df = pd.read_csv(dataset_dir / "train.csv")
-    samples = df.to_dict('records')
+    samples: List[Dict[str, Any]] = df.to_dict('records')  # type: ignore
     print(f"\nTotal samples: {len(df)} ({len(df[df['label']=='consistent'])} consistent, {len(df[df['label']=='contradict'])} contradict)")
     
     # Evaluate

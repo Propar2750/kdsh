@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-01-11T13:25:40.193546",
-  "accuracy": 0.75,
-  "correct": 30,
-  "total": 40,
+  "timestamp": "2026-01-11T13:29:58.011467",
+  "accuracy": 0.65,
+  "correct": 52,
+  "total": 80,
   "llm_stats": {
-    "call_count": 235,
-    "total_time": 129.57570672035217,
-    "avg_time": 0.5513859860440518,
+    "call_count": 469,
+    "total_time": 272.00558853149414,
+    "avg_time": 0.5799692719221623,
     "errors": 0
   },
   "results": [
@@ -91,8 +91,8 @@
     {
       "id": 88,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 67,
@@ -103,8 +103,8 @@
     {
       "id": 112,
       "true": "contradict",
-      "pred": "contradict",
-      "correct": true
+      "pred": "consistent",
+      "correct": false
     },
     {
       "id": 79,
@@ -193,8 +193,8 @@
     {
       "id": 123,
       "true": "consistent",
-      "pred": "consistent",
-      "correct": true
+      "pred": "contradict",
+      "correct": false
     },
     {
       "id": 116,
@@ -248,6 +248,246 @@
       "id": 39,
       "true": "contradict",
       "pred": "contradict",
+      "correct": true
+    },
+    {
+      "id": 19,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 113,
+      "true": "contradict",
+      "pred": "consistent",
+      "correct": false
+    },
+    {
+      "id": 139,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 71,
+      "true": "contradict",
+      "pred": "consistent",
+      "correct": false
+    },
+    {
+      "id": 26,
+      "true": "consistent",
+      "pred": "contradict",
+      "correct": false
+    },
+    {
+      "id": 117,
+      "true": "contradict",
+      "pred": "consistent",
+      "correct": false
+    },
+    {
+      "id": 6,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 76,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 17,
+      "true": "contradict",
+      "pred": "consistent",
+      "correct": false
+    },
+    {
+      "id": 20,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 10,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 122,
+      "true": "contradict",
+      "pred": "consistent",
+      "correct": false
+    },
+    {
+      "id": 62,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 36,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 73,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 98,
+      "true": "contradict",
+      "pred": "contradict",
+      "correct": true
+    },
+    {
+      "id": 25,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 120,
+      "true": "consistent",
+      "pred": "contradict",
+      "correct": false
+    },
+    {
+      "id": 105,
+      "true": "contradict",
+      "pred": "contradict",
+      "correct": true
+    },
+    {
+      "id": 57,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 106,
+      "true": "contradict",
+      "pred": "consistent",
+      "correct": false
+    },
+    {
+      "id": 118,
+      "true": "contradict",
+      "pred": "consistent",
+      "correct": false
+    },
+    {
+      "id": 126,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 4,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 125,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 40,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 96,
+      "true": "contradict",
+      "pred": "consistent",
+      "correct": false
+    },
+    {
+      "id": 45,
+      "true": "contradict",
+      "pred": "contradict",
+      "correct": true
+    },
+    {
+      "id": 54,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 8,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 32,
+      "true": "consistent",
+      "pred": "contradict",
+      "correct": false
+    },
+    {
+      "id": 14,
+      "true": "contradict",
+      "pred": "consistent",
+      "correct": false
+    },
+    {
+      "id": 63,
+      "true": "contradict",
+      "pred": "consistent",
+      "correct": false
+    },
+    {
+      "id": 41,
+      "true": "consistent",
+      "pred": "contradict",
+      "correct": false
+    },
+    {
+      "id": 23,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 90,
+      "true": "consistent",
+      "pred": "contradict",
+      "correct": false
+    },
+    {
+      "id": 100,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 138,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 130,
+      "true": "contradict",
+      "pred": "contradict",
+      "correct": true
+    },
+    {
+      "id": 48,
+      "true": "consistent",
+      "pred": "consistent",
       "correct": true
     }
   ]

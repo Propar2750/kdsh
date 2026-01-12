@@ -201,9 +201,9 @@ Key parameters in `FastVerifierConfig`:
 
 ## Results
 
-Achieves **66%+ accuracy** on both consistent and contradict classes:
-- Consistent accuracy: ~68%
-- Contradict accuracy: ~62%
+Achieves **~65% overall accuracy** on the training set:
+- Consistent accuracy: ~67%
+- Contradict accuracy: ~60%
 
 ### Expected Runtime
 - **Build time**: ~5-10 minutes (first time only, dependencies cached)

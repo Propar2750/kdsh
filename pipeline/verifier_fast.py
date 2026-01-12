@@ -57,7 +57,7 @@ class ResultLogger:
         next_num = max(numbers) + 1 if numbers else 1
         run_folder = self.base_dir / f"test{next_num}"
         run_folder.mkdir(parents=True, exist_ok=True)
-        print(f"   📂 Created run folder: {run_folder}")
+        print(f"   [DIR] Created run folder: {run_folder}")
         return run_folder
     
     def _get_next_file_number(self) -> int:
@@ -142,7 +142,7 @@ class ResultLogger:
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
         
-        print(f"   📁 Saved detailed results to: {filepath}")
+        print(f"   [FILE] Saved detailed results to: {filepath}")
         
         self.file_counter += 1
         return str(filepath)
@@ -1054,7 +1054,7 @@ class FastEvaluator:
                 details = {'error': str(e), 'explanation': f"Error occurred: {str(e)}"}
             
             correct = prediction == true_label_num
-            status = "✓" if correct else "✗"
+            status = "[OK]" if correct else "[X]"
             
             # Store result with explanation
             result_entry = {
@@ -1096,7 +1096,7 @@ class FastEvaluator:
         print(f"LLM calls: {llm_stats['call_count']} | Total time: {llm_stats['total_time']:.1f}s")
         print(f"Avg per call: {llm_stats['avg_time']:.2f}s | Errors: {llm_stats['errors']}")
         print(f"{'='*60}")
-        print(f"📁 Detailed results saved to: {self.pipeline.result_logger.output_dir}/test_*.json")
+        print(f"[FILE] Detailed results saved to: {self.pipeline.result_logger.output_dir}/test_*.json")
         print(f"{'='*60}")
         
         return {

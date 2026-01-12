@@ -98,11 +98,11 @@ docker-compose run --rm pipeline bash
 python -m pipeline.run_eval_fast --max-samples 5
 ```
 
-**With GPU (if available):**
+**Without GPU (CPU-only):**
 
 ```bash
-# Use the GPU-enabled service
-docker-compose run --rm pipeline-gpu python -m pipeline.run_eval_fast --max-samples 5
+# Use the CPU-only service if GPU causes issues
+docker-compose run --rm pipeline-cpu python -m pipeline.run_eval_fast --max-samples 5
 ```
 
 **Alternative: Manual Docker run**
@@ -111,11 +111,11 @@ docker-compose run --rm pipeline-gpu python -m pipeline.run_eval_fast --max-samp
 # Build
 docker build -t kdsh-pipeline .
 
-# Run with GPU (if available)
-docker run --gpus all -e GROQ_API_KEY=$GROQ_API_KEY kdsh-pipeline python -m pipeline.run_eval_fast --max-samples 5
+# Run with GPU (recommended if available)
+docker run --gpus all -e GROQ_API_KEY=$GROQ_API_KEY -v "${PWD}:/app" kdsh-pipeline python -m pipeline.run_eval_fast --max-samples 5
 
 # Run without GPU
-docker run -e GROQ_API_KEY=$GROQ_API_KEY kdsh-pipeline python -m pipeline.run_eval_fast --max-samples 5
+docker run -e GROQ_API_KEY=$GROQ_API_KEY -v "${PWD}:/app" kdsh-pipeline python -m pipeline.run_eval_fast --max-samples 5
 ```
 
 ### Command Options

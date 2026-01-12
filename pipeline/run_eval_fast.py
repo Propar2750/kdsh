@@ -239,15 +239,8 @@ def main():
             ]
         }, f, indent=2)
     
-    # Also save CSV for consistency
-    results_df = pd.DataFrame([
-        {'id': r['id'], 'prediction': 1 if r['prediction'] == 'consistent' else 0}
-        for r in summary['results']
-    ])
-    results_df.to_csv(args.out, index=False)
-    
     print(f"\nResults saved to: {args.output}")
-    print(f"Submission CSV: {args.out}")
+    print(f"Detailed results in: verification_results/")
     return summary['accuracy']
 
 

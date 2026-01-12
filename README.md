@@ -2,6 +2,36 @@
 
 A RAG-based pipeline to verify fictional character backstories against their source novels using hybrid retrieval and LLM verification.
 
+## 🚀 Quick Start for Judges
+
+### Prerequisites
+- **Docker** & Docker Compose installed
+- **Groq API key** (free at https://console.groq.com/keys)
+
+### Reproduce Results in 3 Steps
+
+```bash
+# Step 1: Set your Groq API key
+export GROQ_API_KEY='your-api-key-here'   # Linux/Mac
+$env:GROQ_API_KEY='your-api-key-here'     # Windows PowerShell
+
+# Step 2: Build the Docker image (first time only, ~5-10 min)
+docker-compose build
+
+# Step 3: Generate submission on test.csv
+docker-compose run --rm pipeline python -m pipeline.run_eval_fast --test --out results.csv
+```
+
+This produces `results.csv` with columns: `id`, `prediction`, `rationale`
+
+### Quick Validation (Optional)
+```bash
+# Test on 5 samples from train.csv to verify setup (~1 min)
+docker-compose run --rm pipeline python -m pipeline.run_eval_fast --max-samples 5
+```
+
+---
+
 ## Problem Statement
 
 Given a character's name, book title, and hypothetical backstory, predict whether the backstory is:
@@ -174,6 +204,11 @@ Key parameters in `FastVerifierConfig`:
 Achieves **66%+ accuracy** on both consistent and contradict classes:
 - Consistent accuracy: ~68%
 - Contradict accuracy: ~62%
+
+### Expected Runtime
+- **Build time**: ~5-10 minutes (first time only, dependencies cached)
+- **Test set (60 samples)**: ~5-8 minutes on CPU
+- **Per sample**: ~5-8 seconds (includes LLM API calls)
 
 ## Troubleshooting
 

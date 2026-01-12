@@ -87,23 +87,38 @@ def load_or_create_embeddings(chunks: list, force_reload: bool = False):
 
 def main():
     parser = argparse.ArgumentParser(description="KDSH Track A - FAST Pipeline")
-    parser.add_argument('--max-samples', type=int, default=5,
-                        help='Max samples to evaluate (default: 5)')
+    parser.add_argument('--max-samples', type=int, default=None,
+                        help='Max samples to evaluate (default: all)')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='Verbose output')
     parser.add_argument('--output', '-o', type=str, default='eval_results_fast.json',
-                        help='Output file')
+                        help='Output JSON file (default: eval_results_fast.json)')
+    parser.add_argument('--out', type=str, default='results.csv',
+                        help='Output CSV file for submission (default: results.csv)')
+    parser.add_argument('--input-dir', type=str, default=None,
+                        help='Input directory containing train.csv/test.csv and Books/')
+    parser.add_argument('--test', action='store_true',
+                        help='Run on test.csv instead of train.csv (for submission)')
     parser.add_argument('--no-cache', action='store_true',
                         help='Force regenerate chunks and embeddings')
     
     args = parser.parse_args()
     
-    dataset_dir = Path("/app/Dataset") if Path("/app/Dataset").exists() else Path(__file__).parent.parent / "Dataset"
+    # Determine dataset directory
+    if args.input_dir:
+        dataset_dir = Path(args.input_dir)
+    elif Path("/app/Dataset").exists():
+        dataset_dir = Path("/app/Dataset")
+    else:
+        dataset_dir = Path(__file__).parent.parent / "Dataset"
     
     print("="*60)
     print("KDSH Track A - FAST Verification Pipeline")
     print("="*60)
-    print(f"Max samples: {args.max_samples}")
+    print(f"Dataset dir: {dataset_dir}")
+    print(f"Mode: {'TEST (submission)' if args.test else 'TRAIN (evaluation)'}")
+    if args.max_samples:
+        print(f"Max samples: {args.max_samples}")
     
     # Step 1-2: Load/create chunks (with caching)
     print("\n[1/3] Loading chunks...")
@@ -119,15 +134,45 @@ def main():
     pipeline = FastVerificationPipeline(chunks, embedder, config)
     
     # Load samples
-    df = pd.read_csv(dataset_dir / "train.csv")
+    csv_file = "test.csv" if args.test else "train.csv"
+    df = pd.read_csv(dataset_dir / csv_file)
     samples: List[Dict[str, Any]] = df.to_dict('records')  # type: ignore
-    print(f"\nTotal samples: {len(df)} ({len(df[df['label']=='consistent'])} consistent, {len(df[df['label']=='contradict'])} contradict)")
     
-    # Evaluate
+    if args.test:
+        print(f"\nTest samples: {len(df)}")
+    else:
+        print(f"\nTotal samples: {len(df)} ({len(df[df['label']=='consistent'])} consistent, {len(df[df['label']=='contradict'])} contradict)")
+    
+    # For test mode, run predictions without evaluation
+    if args.test:
+        results = []
+        for i, sample in enumerate(samples):
+            if args.max_samples and i >= args.max_samples:
+                break
+            print(f"\n[{i+1}/{len(samples) if not args.max_samples else min(args.max_samples, len(samples))}] Sample {sample['id']} - {sample['char']}")
+            prediction, _ = pipeline.verify_backstory(
+                backstory=sample['content'],
+                character=sample['char'],
+                book_name=sample['book_name'],
+                sample_id=sample['id'],
+                verbose=args.verbose,
+                save_results=False
+            )
+            results.append({'id': sample['id'], 'prediction': prediction})
+        
+        # Save submission CSV
+        results_df = pd.DataFrame(results)
+        results_df.to_csv(args.out, index=False)
+        print(f"\n{'='*60}")
+        print(f"Submission saved to: {args.out}")
+        print(f"{'='*60}")
+        return 0
+    
+    # Evaluate on train
     evaluator = FastEvaluator(pipeline)
     summary = evaluator.evaluate(samples, max_samples=args.max_samples, verbose=args.verbose)
     
-    # Save results
+    # Save JSON results
     with open(args.output, 'w') as f:
         json.dump({
             'timestamp': datetime.now().isoformat(),
@@ -141,7 +186,15 @@ def main():
             ]
         }, f, indent=2)
     
+    # Also save CSV for consistency
+    results_df = pd.DataFrame([
+        {'id': r['id'], 'prediction': 1 if r['prediction'] == 'consistent' else 0}
+        for r in summary['results']
+    ])
+    results_df.to_csv(args.out, index=False)
+    
     print(f"\nResults saved to: {args.output}")
+    print(f"Submission CSV: {args.out}")
     return summary['accuracy']
 
 

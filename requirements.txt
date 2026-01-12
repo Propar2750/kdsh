@@ -13,3 +13,6 @@ rank-bm25>=0.2.2
 
 # LLM API
 groq>=0.9.0
+
+# Visualization (optional - for presentation graphs)
+matplotlib>=3.7.0

@@ -457,13 +457,13 @@ class FastHybridRetriever:
             weight = 1.0 if q_idx == 0 else 0.5  # Primary query gets more weight
             
             bm25_results = self.bm25.search(q, top_k=k * 2)
-            for rank, (idx, _) in enumerate(bm25_results):
+            for rank, (idx, score) in enumerate(bm25_results):
                 # Lower rank (earlier) is better, so we want min
                 if idx not in all_bm25_ranks:
                     all_bm25_ranks[idx] = rank * weight
                 else:
                     all_bm25_ranks[idx] = min(all_bm25_ranks[idx], rank * weight)
-            
+
             vector_results = self.embedder.search(q, top_k=k * 2)
             for rank, r in enumerate(vector_results):
                 chunk_id = r.get('chunk_id')

@@ -23,5 +23,8 @@ RUN python -m pip install --upgrade pip && \
 # Copy project files (changes frequently)
 COPY . .
 
-# Default command
-CMD ["python", "-m", "pytest", "tests/", "-v"]
+# Create cache directory
+RUN mkdir -p /app/.cache
+
+# Default command - run evaluation on 5 samples
+CMD ["python", "-m", "pipeline.run_eval_fast", "--max-samples", "5"]

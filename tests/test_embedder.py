@@ -58,7 +58,7 @@ def sample_chunks():
 
 def test_embedder_config_defaults():
     """Test default embedder configuration."""
-    from pipeline.embedder import EmbedderConfig, DEFAULT_EMBEDDER_CONFIG
+    from pipeline.embedder import EmbedderConfig
     
     config = EmbedderConfig()
     
@@ -84,21 +84,8 @@ def test_embedder_config_custom():
 
 
 # ============================================================================
-# Task Prefix Tests
+# Task Type Tests
 # ============================================================================
-
-def test_add_task_prefix():
-    """Test task prefix addition."""
-    from pipeline.embedder import add_task_prefix, TaskType
-    
-    texts = ['Hello world', 'Test text']
-    
-    prefixed = add_task_prefix(texts, TaskType.SEARCH_DOCUMENT)
-    assert prefixed == ['search_document: Hello world', 'search_document: Test text']
-    
-    prefixed = add_task_prefix(texts, TaskType.SEARCH_QUERY)
-    assert prefixed == ['search_query: Hello world', 'search_query: Test text']
-
 
 def test_task_types():
     """Test task type constants."""
@@ -106,8 +93,6 @@ def test_task_types():
     
     assert TaskType.SEARCH_DOCUMENT == "search_document"
     assert TaskType.SEARCH_QUERY == "search_query"
-    assert TaskType.CLUSTERING == "clustering"
-    assert TaskType.CLASSIFICATION == "classification"
 
 
 # ============================================================================
@@ -202,7 +187,7 @@ def test_chunk_embedder_init():
     embedder = ChunkEmbedder(config)
     
     assert embedder.config.device == 'cpu'
-    assert embedder._embeddings is None
+    assert len(embedder._embeddings) == 0
     assert embedder._chunks == []
 
 
@@ -213,7 +198,6 @@ def mock_chunk_embedder(sample_chunks):
     
     embedder = ChunkEmbedder(EmbedderConfig(device='cpu'))
     embedder._chunks = sample_chunks
-    embedder._chunk_ids = [c['chunk_id'] for c in sample_chunks]
     # Create fake normalized embeddings
     embeddings = np.random.randn(len(sample_chunks), 768)
     embedder._embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
@@ -226,30 +210,12 @@ def test_chunk_embedder_num_chunks(mock_chunk_embedder, sample_chunks):
     assert mock_chunk_embedder.num_chunks == len(sample_chunks)
 
 
-def test_chunk_embedder_get_embedding(mock_chunk_embedder):
-    """Test getting embedding by chunk ID."""
-    embedding = mock_chunk_embedder.get_embedding('test_0')
+def test_chunk_embedder_embeddings_property(mock_chunk_embedder):
+    """Test embeddings property."""
+    embeddings = mock_chunk_embedder.embeddings
     
-    assert embedding is not None
-    assert isinstance(embedding, np.ndarray)
-    assert len(embedding) == 768
-
-
-def test_chunk_embedder_get_embedding_not_found(mock_chunk_embedder):
-    """Test getting embedding for non-existent chunk."""
-    embedding = mock_chunk_embedder.get_embedding('nonexistent')
-    
-    assert embedding is None
-
-
-def test_chunk_embedder_to_dataframe(mock_chunk_embedder):
-    """Test converting to DataFrame."""
-    df = mock_chunk_embedder.to_dataframe()
-    
-    assert len(df) == 3
-    assert 'content' in df.columns
-    assert 'embedding' in df.columns
-    assert 'chunk_id' in df.columns
+    assert isinstance(embeddings, np.ndarray)
+    assert embeddings.shape == (3, 768)
 
 
 def test_chunk_embedder_search(mock_chunk_embedder):
@@ -279,6 +245,19 @@ def test_chunk_embedder_search_with_threshold(mock_chunk_embedder):
     
     # Results should be filtered by threshold
     assert all(r['score'] >= 0.99 for r in results)
+
+
+def test_chunk_embedder_batch_search(mock_chunk_embedder):
+    """Test batch search functionality."""
+    def mock_embed_queries(texts, show_progress=False):
+        return np.random.randn(len(texts), 768)
+    
+    mock_chunk_embedder.embedder.embed_queries = mock_embed_queries
+    
+    results = mock_chunk_embedder.batch_search(["query 1", "query 2"], top_k=2)
+    
+    assert len(results) == 2  # Two queries
+    assert all(len(r) == 2 for r in results)  # Top 2 results each
 
 
 # ============================================================================

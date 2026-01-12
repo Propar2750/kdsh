@@ -1,212 +1,243 @@
-# Project: KDSH 2026 — Track A (Pathway pipeline)
+# CLAUDE.md - Project Reference for KDSH 2026 Track A
 
-## Goal
-Given (novel text, hypothetical backstory), predict label y ∈ {0,1}:
-y=1 if backstory is consistent with the novel, else 0.
-Also produce an evidence rationale internally.
+## Project Goal
+Given (novel text, hypothetical backstory), predict label y ∈ {0, 1}:
+- **y=1**: Backstory is CONSISTENT with the novel
+- **y=0**: Backstory CONTRADICTS the novel
 
-## Constraints
-- Must use Pathway meaningfully (ingestion + indexing + retrieval orchestration).
-- **ALWAYS use Docker** - All Pathway code must run in Docker environment, never on host machine
-- Output: results.csv with columns: [id, prediction]
-- Must be reproducible: `python -m pipeline.run --input_dir ... --out results.csv`
-- Must use NVIDIA GeForce RTX 5060 Laptop GPU if possible
+Output: `results.csv` with columns `[id, prediction]`
 
-## Pipeline (high level)
-1) Ingest novels/backstories into tables (Pathway) ✅
-2) Chunk novel -> chunk_table ✅
-3) Embed + vector index ✅
-4) Backstory -> atomic claims
-5) Retrieve top-k evidence per claim
-6) Verify (supports/contradicts/unclear)
-7) Aggregate to final label
-8) Save results + logs/rationale
-
-## Design decisions
-- **Docker**: CUDA 12.8 + PyTorch nightly (cu128) for RTX 5060 Blackwell support
-- **Chunk size**: 400 tokens ; overlap: 100 front + 100 back (200 total overlap)
-- **Embedding model**: nomic-ai/nomic-embed-text-v1.5 (768-dim, matryoshka support)
-- **Reasoning LLM**: Groq API with llama-3.1-8b-instant (free, ~1s per call)
-- #claims per backstory: 5
-- Contradiction policy: hard-kill (any contradiction → predict 0)
-- Retriever: top-k=10 hybrid (BM25 + vector), no LLM rerank
-- Verifier: LLM rubric via Groq API
-- Aggregator rule: If any claim contradicts → 0, else → 1
-
-## Data contracts
-- story_id: string
-- novel_text: string
-- backstory_text: string
-- output schema: id, prediction (0/1)
-- Data is in /Dataset/train.csv and Dataset/Books/book_name.txt
-
-## "Definition of done"
-- Smoke test runs on 2 samples end-to-end < 2 minutes
-- Deterministic output given fixed seed
-- Clear logging: per-claim retrieved passages + verdict
+## Critical Constraints
+- **MUST use Docker** - All code runs in Docker environment, never on host machine
+- **MUST use Pathway** - Required for ingestion + indexing + retrieval orchestration
+- **Reproducible**: `python -m pipeline.run_eval_fast --input_dir ... --out results.csv`
+- **GPU**: NVIDIA GeForce RTX 5060 Laptop GPU if available
 
 ---
 
-## Development Setup
+## Pipeline Architecture
 
-### Prerequisites
-- Docker with NVIDIA Container Toolkit
-- NVIDIA GPU (tested on RTX 5060 Laptop GPU)
-
-**CRITICAL**: All development and testing MUST be done inside Docker containers. Never run Pathway code directly on the host machine.
-
-### Commands
-```bash
-# Build Docker image (GPU-enabled)
-docker-compose build
-
-# Run all tests
-docker-compose run --rm pipeline python -m pytest tests/ -v
-
-# Run tests excluding slow ones
-docker-compose run --rm pipeline python -m pytest tests/ -v -k "not slow"
-
-# Verify GPU access
-docker-compose run --rm pipeline python -c "import torch; print(torch.cuda.get_device_name(0))"
-
-# Interactive shell
-docker-compose run --rm pipeline bash
+```
+Backstory → Claim Extraction → Hybrid Retrieval → LLM Verification → Aggregation → Prediction
+     ↓              ↓                  ↓                  ↓                ↓
+  (input)     (5 claims)      (BM25 + Vector)      (Groq API)      (One error = 0)
 ```
 
-### Project Structure
-```
-pipeline/
-├── __init__.py      # Exports all modules
-├── loader.py        # CSV/book loading → Pathway tables
-├── chunker.py       # Token-based chunking with overlap
-├── embedder.py      # nomic-embed + vector index
-tests/
-├── test_loader.py   # 7 tests
-├── test_chunker.py  # 20 tests  
-├── test_embedder.py # 18 tests (2 slow)
-├── test_integration.py # 1 test
-Dataset/
-├── train.csv        # Training data with labels
-├── test.csv         # Test data
-├── Books/           # Novel text files
-```
-
-### Implemented Modules
-
-**loader.py** - Data ingestion
-- `load_csv_to_pathway(csv_path)` → Pathway table
-- `load_books(dataset_dir)` → dict[book_name, text]
-- `create_story_table(csv_path, books)` → Pathway table with novel_text joined
-
-**chunker.py** - Text chunking
-- `chunk_text(text, config)` → list of chunk dicts
-- `chunk_books(books, config)` → all chunks from all books
-- `BookChunker` class for pipeline integration
-- Chapter detection for metadata
-
-**embedder.py** - Embeddings & retrieval
-- `NomicEmbedder` - Wraps sentence-transformers model
-- `ChunkEmbedder` - Embeds chunks, provides search()
-- `PathwayVectorIndex` - Pathway table with embeddings
-
-**verifier.py** - Full verification pipeline (SLOW - ~65 LLM calls per sample)
-- `LlamaLLM` - Llama wrapper with batching + memory optimization
-- `ClaimExtractor` - Extract atomic facts from backstories
-- `QueryGenerator` - Generate search queries per claim
-- `BM25Retriever` - Sparse lexical search
-- `HybridRetriever` - Combines BM25 + vector search with score fusion
-- `Reranker` - LLM-based relevance reranking (SLOW!)
-- `ClaimVerifier` - Verify claims against evidence
-- `Aggregator` - Combine verdicts into final prediction
-- `VerificationPipeline` - Full end-to-end pipeline
-- `Evaluator` - Evaluate accuracy on labeled data
-
-**verifier_fast.py** - FAST verification pipeline (~6 LLM calls per sample) ⭐
-- `FastLlamaLLM` - Optimized LLM wrapper with timing stats
-- `FastClaimExtractor` - Single LLM call for claim extraction
-- `SimpleBM25` - Pure Python BM25 (no external deps)
-- `FastHybridRetriever` - Score-based fusion (NO LLM reranking)
-- `FastClaimVerifier` - Simple verdict extraction
-- `FastAggregator` - Any-contradiction policy
-- `FastVerificationPipeline` - 10x faster end-to-end pipeline
-- `FastEvaluator` - Quick evaluation with stats
-
-**run_eval.py** - Original evaluation runner (SLOW)
-**run_eval_fast.py** - FAST evaluation runner ⭐
-- `python -m pipeline.run_eval_fast --max-samples 5`
-
-### Tech Stack
-- **Pathway**: 0.28.0 (real tables, not stubs)
-- **PyTorch**: 2.11.0.dev+cu128 (Blackwell support)
-- **CUDA**: 12.8
-- **Embedding**: nomic-ai/nomic-embed-text-v1.5
-- **LLM**: Groq API with llama-3.1-8b-instant (free, fast cloud inference)
-
-### Environment Variables
-```bash
-GROQ_API_KEY=your-key-here  # Get free key at https://console.groq.com/keys
-```
+### Flow
+1. **Ingest**: Load novels/backstories via Pathway tables
+2. **Chunk**: Split novel into 400-token overlapping chunks
+3. **Embed**: Generate vector embeddings (nomic-embed-text-v1.5)
+4. **Extract**: LLM extracts 5 verifiable claims from backstory
+5. **Retrieve**: Hybrid search (BM25 + vector) with RRF fusion per claim
+6. **Verify**: LLM checks each claim → SUPPORTS/CONTRADICTS/UNCLEAR
+7. **Aggregate**: Any high-confidence contradiction → predict 0
+8. **Output**: Save results + logs
 
 ---
 
-## Performance & Optimization Notes
+## Key Files
 
-### Docker Build Speed
-- **Problem**: Full rebuild takes ~8+ hours (downloads PyTorch nightly + all packages)
-- **Solution**: Layer caching with `requirements.txt`
-  - requirements.txt is copied first and cached
-  - Subsequent builds only rebuild if requirements change
-  - Code changes don't trigger full package reinstall
-- **Tip**: Use `docker-compose build --no-cache` only when absolutely needed
+| File | Purpose |
+|------|---------|
+| `pipeline/__init__.py` | Package exports |
+| `pipeline/loader.py` | Load CSV + book texts into Pathway tables |
+| `pipeline/chunker.py` | Chunk text (400 tokens, 100 overlap front+back) |
+| `pipeline/embedder.py` | Nomic embeddings + vector search |
+| `pipeline/verifier_fast.py` | **Main pipeline**: Groq LLM, retrieval, verification, aggregation |
+| `pipeline/run_eval_fast.py` | Evaluation runner with caching |
+| `Dockerfile` | Docker config (CUDA 12.8, PyTorch nightly) |
+| `docker-compose.yml` | Docker Compose config |
 
-### GPU Memory (8GB VRAM Analysis)
-- **Llama-3.1-8B @ float16**: ~16GB → needs offloading to shared memory
-- **With device_map="auto"**: Automatically splits between GPU + CPU RAM
-- **8-bit quantization**: Reduces to ~8GB (enable with `use_8bit=True`)
-- **Current setup**: Works with 8GB dedicated + 16GB shared memory
-- **Recommendation**: 8-bit quantization recommended for faster inference
+---
 
-### Pipeline Efficiency - WHY IT WAS SLOW
+## Configuration (FastVerifierConfig)
 
-**Original pipeline (verifier.py) - ~65+ LLM calls per sample:**
-1. Claim extraction: 1 LLM call
-2. Per claim (x5 claims):
-   - Query generation: 1 LLM call
-   - Reranking: ~10 LLM calls (one per retrieved chunk!)
-   - Verification: 1 LLM call
-   - Subtotal: ~12 LLM calls per claim
-3. Total: 1 + (5 × 12) = **~61 LLM calls per sample**
-4. At ~10s per call = **~10 minutes per sample** = **12 hours for 72 samples**
-
-**FAST pipeline (verifier_fast.py) - ~6 LLM calls per sample:**
-1. Claim extraction: 1 LLM call
-2. Per claim (x5 claims):
-   - Query: Use claim directly (0 LLM calls)
-   - Reranking: Score fusion only (0 LLM calls)
-   - Verification: 1 LLM call
-3. Total: 1 + 5 = **6 LLM calls per sample**
-4. At ~10s per call = **~1 minute per sample** = **~1 hour for 72 samples**
-
-### Config Options (VerifierConfig)
 ```python
-VerifierConfig(
-    llm_batch_size=4,       # Increase for faster batching
-    use_8bit=True,          # Enable 8-bit quantization (saves ~50% VRAM)
-    parallel_claims=True,   # Parallel retrieval (CPU-bound)
-    max_workers=2,          # Thread workers for retrieval
-    top_k_per_query=5,      # Reduce for speed, increase for recall
-    top_k_reranked=3,       # Chunks after reranking
-)
+@dataclass
+class FastVerifierConfig:
+    # LLM settings (Groq API)
+    llm_model: str = "llama-3.1-8b-instant"
+    llm_temperature: float = 0.0
+    llm_max_tokens: int = 800
+    
+    # Retrieval settings
+    top_k_retrieval: int = 15      # Chunks retrieved per query
+    top_k_final: int = 8           # Chunks sent to LLM
+    bm25_weight: float = 0.5       # BM25 weight in RRF fusion
+    vector_weight: float = 0.5     # Vector weight in RRF fusion
+    
+    # Verification settings
+    max_claims: int = 5            # Claims per backstory
+    
+    # Retry settings
+    max_retries: int = 3
+    parallel_workers: int = 10     # Concurrent Groq requests
 ```
 
 ---
 
-## TODO (Next Steps)
-- [x] Implement claim extraction from backstories ✅
-- [x] Add retrieval pipeline (top-k per claim) ✅
-- [x] Add verification module (NLI or LLM-based) ✅
-- [x] Add aggregation logic ✅
-- [x] Create `pipeline/run_eval.py` evaluation runner ✅
-- [ ] Run end-to-end smoke test on 2-5 samples
-- [ ] Tune aggregation thresholds based on results
-- [ ] Create final `pipeline/run.py` entry point for submission
+## Key Design Decisions
+
+### Chunking
+- **Size**: 400 tokens per chunk
+- **Overlap**: 100 front + 100 back (200 total)
+- **Chapter detection**: Extracts chapter metadata for context
+
+### Embedding
+- **Model**: `nomic-ai/nomic-embed-text-v1.5` (768-dim)
+- **Matryoshka**: Can truncate to 64/128/256/512 dims
+- **Task prefixes**: `search_document:` for chunks, `search_query:` for queries
+
+### Retrieval
+- **Hybrid**: BM25 + Vector search
+- **Fusion**: Reciprocal Rank Fusion (RRF) with k=60
+- **Query expansion**: Extracts character names, relationships, biographical terms
+- **Multi-query**: Primary query (weight 1.0) + expanded queries (weight 0.5)
+
+### Verification
+- **LLM**: Groq API with Llama 3.1 8B Instant (~1s per call, free tier)
+- **Verdicts**: SUPPORTS, CONTRADICTS, UNCLEAR
+- **Priority**: Look for contradictions first, then supports, then unclear
+- **Detective approach**: "Precise but not assumptional"
+
+### Aggregation
+- **Policy**: One factual error = CONTRADICT (hard-kill)
+- **Strong contradiction**: confidence >= 0.75 + valid citation
+- **Decent contradiction**: confidence >= 0.6
+- **Weak contradiction**: confidence 0.5-0.6 with citation > 30 chars
+- **False positive filtering**: Filters patterns like "same person", "no mention of"
+
+---
+
+## Data Locations
+
+```
+Dataset/
+├── train.csv          # Training data (id, book_name, char, caption, content, label)
+├── test.csv           # Test data (no label column)
+└── Books/
+    ├── In search of the castaways.txt
+    └── The Count of Monte Cristo.txt
+```
+
+### CSV Schema
+- `id`: Sample identifier
+- `book_name`: Source novel name
+- `char`: Character name
+- `caption`: Brief description
+- `content`: Backstory text to verify
+- `label`: "consistent" or "contradict" (train only)
+
+---
+
+## Environment Variables
+
+```bash
+GROQ_API_KEY=your-api-key-here  # Required - get from https://console.groq.com/keys
+```
+
+---
+
+## Running Commands
+
+```bash
+# Build and run Docker (no GPU required)
+docker-compose build
+docker-compose run --rm pipeline python -m pipeline.run_eval_fast --max-samples 5
+
+# With GPU
+docker-compose run --rm pipeline-gpu python -m pipeline.run_eval_fast --max-samples 5
+
+# Inside container - quick test
+python -m pipeline.run_eval_fast --max-samples 5
+
+# Inside container - full eval
+python -m pipeline.run_eval_fast --verbose
+
+# Generate submission file (test.csv)
+python -m pipeline.run_eval_fast --test --out results.csv
+
+# Skip cache (regenerate embeddings)
+python -m pipeline.run_eval_fast --no-cache
+```
+
+---
+
+## Performance Metrics
+
+**Best achieved**: 66.2% overall accuracy
+- Consistent accuracy: 68.6%
+- Contradict accuracy: 62.1%
+
+**Goal**: 60%+ on BOTH consistent and contradict classes ✅ ACHIEVED
+
+---
+
+## Caching
+
+Chunks and embeddings are cached in `.cache/`:
+- `chunks.pkl` - Pickled chunk data
+- `embeddings.npy` - NumPy embedding matrix
+
+Use `--no-cache` to regenerate.
+
+---
+
+## Key Classes
+
+### FastClaimExtractor
+Extracts 5 verifiable factual claims from backstory focusing on:
+- Dates, years, time periods
+- Names of people mentioned
+- Relationships
+- Specific events
+- Locations
+
+### FastHybridRetriever
+Hybrid search combining:
+- BM25 (exact term matching)
+- Vector search (semantic similarity)
+- Query expansion for character names and biographical terms
+
+### FastClaimVerifier
+Verifies claims with prompts designed for:
+- Detecting contradictions (different dates, facts, opposite statements)
+- Confirming supports (same facts confirmed)
+- Marking unclear (topic not addressed)
+
+### FastAggregator
+Aggregates verdicts with false positive filtering:
+- Filters "same person" comparisons
+- Filters "no mention of" patterns
+- Requires citations for weak contradictions
+
+---
+
+## Testing
+
+```bash
+# Run tests
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_chunker.py -v
+```
+
+---
+
+## Common Issues
+
+1. **Pathway warning on Windows**: Expected - Pathway runs properly only in Docker (Linux)
+2. **CUDA errors**: Ensure `--gpus all` flag in Docker run
+3. **Groq rate limits**: Pipeline has retry logic with backoff
+4. **Embedding cache mismatch**: Use `--no-cache` if chunks changed
+
+---
+
+## Future Improvements
+
+- [ ] Tune aggregation thresholds based on more data
+- [ ] Add more books to dataset
+- [ ] Experiment with different embedding dimensions
+- [ ] Try different LLM models (Llama 3.1 70B for better accuracy)
+- [ ] Implement confidence calibration

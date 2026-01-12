@@ -81,7 +81,7 @@ phases = {
 
 def create_progress_chart():
     """Create the main progress chart showing all three metrics over time."""
-    fig, ax = plt.subplots(figsize=(14, 8))
+    fig, ax = plt.subplots(figsize=(16, 9))
     
     x = np.arange(len(test_data['runs']))
     
@@ -105,8 +105,8 @@ def create_progress_chart():
     # Styling
     ax.set_xlabel('Experiment Runs', fontsize=14, fontweight='bold')
     ax.set_ylabel('Accuracy (%)', fontsize=14, fontweight='bold')
-    ax.set_title('Claim Verification Pipeline: Improvement Journey', 
-                 fontsize=18, fontweight='bold', pad=20)
+    ax.set_title('Claim Verification Pipeline: The Journey to 60%+ on Both Classes', 
+                 fontsize=20, fontweight='bold', pad=20)
     
     ax.set_xticks(x)
     ax.set_xticklabels([phases[r] for r in test_data['runs']], fontsize=9, rotation=45, ha='right')
@@ -116,16 +116,30 @@ def create_progress_chart():
     ax.legend(loc='upper left', fontsize=11, framealpha=0.9)
     ax.grid(True, alpha=0.3)
     
-    # Add annotations for key moments
-    ax.annotate('Crisis!', xy=(6, 0), xytext=(6, 15),
-                fontsize=10, color=PRIMARY_COLOR, fontweight='bold',
-                arrowprops=dict(arrowstyle='->', color=PRIMARY_COLOR),
-                ha='center')
+    # Add key moment annotations with better styling
+    # Crisis annotation
+    ax.annotate('CRISIS!\n0% Contradict', xy=(6, 0), xytext=(6, 20),
+                fontsize=11, color=PRIMARY_COLOR, fontweight='bold',
+                arrowprops=dict(arrowstyle='->', color=PRIMARY_COLOR, lw=2),
+                ha='center', bbox=dict(boxstyle='round,pad=0.3', facecolor=BACKGROUND_COLOR, edgecolor=PRIMARY_COLOR))
     
-    ax.annotate('Breakthrough!', xy=(7, 73.3), xytext=(7, 88),
-                fontsize=10, color=SUCCESS_COLOR, fontweight='bold',
-                arrowprops=dict(arrowstyle='->', color=SUCCESS_COLOR),
-                ha='center')
+    # Breakthrough annotation
+    ax.annotate('First\nBreakthrough!', xy=(7, 73.3), xytext=(7.5, 88),
+                fontsize=11, color=SUCCESS_COLOR, fontweight='bold',
+                arrowprops=dict(arrowstyle='->', color=SUCCESS_COLOR, lw=2),
+                ha='center', bbox=dict(boxstyle='round,pad=0.3', facecolor=BACKGROUND_COLOR, edgecolor=SUCCESS_COLOR))
+    
+    # Failed experiment annotation
+    ax.annotate('Failed\nExperiment', xy=(12, 44.8), xytext=(11.5, 30),
+                fontsize=10, color=PRIMARY_COLOR, fontweight='bold',
+                arrowprops=dict(arrowstyle='->', color=PRIMARY_COLOR, lw=2),
+                ha='center', bbox=dict(boxstyle='round,pad=0.3', facecolor=BACKGROUND_COLOR, edgecolor=PRIMARY_COLOR))
+    
+    # GOAL ACHIEVED annotation
+    ax.annotate('GOAL\nACHIEVED!', xy=(13, 62.1), xytext=(13, 80),
+                fontsize=12, color='#00ff00', fontweight='bold',
+                arrowprops=dict(arrowstyle='->', color='#00ff00', lw=3),
+                ha='center', bbox=dict(boxstyle='round,pad=0.5', facecolor=BACKGROUND_COLOR, edgecolor='#00ff00', linewidth=2))
     
     plt.tight_layout()
     plt.savefig('presentation/graphs/01_progress_chart.png', dpi=150, 
@@ -193,20 +207,20 @@ def create_balance_chart():
 
 def create_comparison_chart():
     """Create a bar chart comparing initial vs final results."""
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, ax = plt.subplots(figsize=(14, 8))
     
     categories = ['Overall\nAccuracy', 'Consistent\nAccuracy', 'Contradict\nAccuracy']
     initial = [52.5, 45.1, 65.5]  # test6
-    final = [63.8, 68.6, 55.2]    # test44
+    final = [66.2, 68.6, 62.1]    # test46 - GOAL ACHIEVED!
     best_40 = [75.0, 76.0, 73.3]  # test32
     
     x = np.arange(len(categories))
-    width = 0.25
+    width = 0.22
     
     bars1 = ax.bar(x - width, initial, width, label='Initial (test6)', 
                    color='#333333', edgecolor=TEXT_COLOR, linewidth=2)
-    bars2 = ax.bar(x, final, width, label='Final 80-sample (test44)', 
-                   color=PRIMARY_COLOR, edgecolor=TEXT_COLOR, linewidth=2)
+    bars2 = ax.bar(x, final, width, label='Final (test46) - GOAL!', 
+                   color=SUCCESS_COLOR, edgecolor=TEXT_COLOR, linewidth=2)
     bars3 = ax.bar(x + width, best_40, width, label='Best 40-sample (test32)', 
                    color=SECONDARY_COLOR, edgecolor=TEXT_COLOR, linewidth=2)
     
@@ -226,7 +240,7 @@ def create_comparison_chart():
     # Styling
     ax.set_xlabel('Metric', fontsize=14, fontweight='bold')
     ax.set_ylabel('Accuracy (%)', fontsize=14, fontweight='bold')
-    ax.set_title('Performance Comparison: Initial vs Final', 
+    ax.set_title('Performance Comparison: Initial vs Final (GOAL ACHIEVED!)', 
                  fontsize=18, fontweight='bold', pad=20)
     
     ax.set_xticks(x)
@@ -309,57 +323,92 @@ def create_timeline_chart():
     print("✅ Created: 04_timeline_chart.png")
 
 # ============================================================================
-# Graph 5: Final Results Donut Chart
+# Graph 5: Final Results Donut Chart (Improved)
 # ============================================================================
 
 def create_final_results_chart():
-    """Create a donut chart showing final classification results."""
-    fig, axes = plt.subplots(1, 2, figsize=(14, 7))
+    """Create professional donut charts showing final classification results."""
+    fig = plt.figure(figsize=(16, 8))
     
-    # Consistent results
+    # Data
+    total_correct = 53
+    total_wrong = 27
     consistent_correct = 35
-    consistent_wrong = 51 - 35
+    consistent_wrong = 16
+    contradict_correct = 18
+    contradict_wrong = 11
     
-    ax1 = axes[0]
-    sizes1 = [consistent_correct, consistent_wrong]
-    colors1 = [SUCCESS_COLOR, PRIMARY_COLOR]
-    explode1 = (0.05, 0)
+    # Create 3 subplots
+    gs = fig.add_gridspec(1, 3, wspace=0.3)
     
-    wedges1, texts1, autotexts1 = ax1.pie(sizes1, explode=explode1, colors=colors1,
-                                           autopct='%1.1f%%', startangle=90,
-                                           wedgeprops=dict(width=0.5, edgecolor=TEXT_COLOR),
-                                           textprops=dict(color=TEXT_COLOR, fontsize=14, fontweight='bold'))
-    ax1.set_title('Consistent Samples\n(51 total)', fontsize=16, fontweight='bold', pad=20)
-    ax1.legend(['Correct (35)', 'Wrong (16)'], loc='lower center', fontsize=11)
+    def draw_donut(ax, correct, wrong, title, subtitle, highlight_color):
+        """Draw a single donut chart with center text."""
+        total = correct + wrong
+        accuracy = correct / total * 100
+        
+        # Donut data
+        sizes = [correct, wrong]
+        colors = [SUCCESS_COLOR, '#444444']  # Green for correct, dark gray for wrong
+        
+        # Draw outer ring
+        wedges, texts, autotexts = ax.pie(
+            sizes, 
+            colors=colors,
+            autopct='',
+            startangle=90,
+            wedgeprops=dict(width=0.35, edgecolor=BACKGROUND_COLOR, linewidth=2),
+        )
+        
+        # Draw inner decorative ring
+        inner_circle = mpatches.Circle((0, 0), 0.5, facecolor=BACKGROUND_COLOR, 
+                                        edgecolor=highlight_color, linewidth=3)
+        ax.add_patch(inner_circle)
+        
+        # Center percentage
+        ax.text(0, 0.08, f'{accuracy:.1f}%', ha='center', va='center',
+               fontsize=36, fontweight='bold', color=highlight_color)
+        
+        # Center label
+        ax.text(0, -0.25, f'{correct}/{total}', ha='center', va='center',
+               fontsize=14, color=ACCENT_COLOR)
+        
+        # Title above
+        ax.set_title(title, fontsize=16, fontweight='bold', color=TEXT_COLOR, pad=15)
+        
+        # Subtitle below
+        ax.text(0, -1.4, subtitle, ha='center', va='center',
+               fontsize=11, color=TEXT_COLOR)
+        
+        # Add legend-style labels
+        ax.text(0, -1.65, f'✓ Correct: {correct}  ✗ Wrong: {wrong}', ha='center', va='center',
+               fontsize=10, color=ACCENT_COLOR)
+        
+        ax.set_aspect('equal')
     
-    # Add center text
-    ax1.text(0, 0, '68.6%', ha='center', va='center', fontsize=24, 
-             fontweight='bold', color=SUCCESS_COLOR)
+    # Overall Accuracy (center, slightly larger)
+    ax1 = fig.add_subplot(gs[0, 1])
+    draw_donut(ax1, total_correct, total_wrong, 
+               'OVERALL', '80 samples total', TEXT_COLOR)
     
-    # Contradict results
-    contradict_correct = 16
-    contradict_wrong = 29 - 16
+    # Consistent Accuracy (left)
+    ax2 = fig.add_subplot(gs[0, 0])
+    draw_donut(ax2, consistent_correct, consistent_wrong,
+               'CONSISTENT', '51 samples', PRIMARY_COLOR)
     
-    ax2 = axes[1]
-    sizes2 = [contradict_correct, contradict_wrong]
-    colors2 = [SUCCESS_COLOR, PRIMARY_COLOR]
-    explode2 = (0.05, 0)
+    # Contradict Accuracy (right)  
+    ax3 = fig.add_subplot(gs[0, 2])
+    draw_donut(ax3, contradict_correct, contradict_wrong,
+               'CONTRADICT', '29 samples', SECONDARY_COLOR)
     
-    wedges2, texts2, autotexts2 = ax2.pie(sizes2, explode=explode2, colors=colors2,
-                                           autopct='%1.1f%%', startangle=90,
-                                           wedgeprops=dict(width=0.5, edgecolor=TEXT_COLOR),
-                                           textprops=dict(color=TEXT_COLOR, fontsize=14, fontweight='bold'))
-    ax2.set_title('Contradict Samples\n(29 total)', fontsize=16, fontweight='bold', pad=20)
-    ax2.legend(['Correct (16)', 'Wrong (13)'], loc='lower center', fontsize=11)
+    # Main title
+    fig.suptitle('Final Results', 
+                 fontsize=22, fontweight='bold', color=TEXT_COLOR, y=0.98)
     
-    # Add center text
-    ax2.text(0, 0, '55.2%', ha='center', va='center', fontsize=24, 
-             fontweight='bold', color=SECONDARY_COLOR)
+    # Add target indicator
+    fig.text(0.5, 0.02, '60% Target Achieved on All Metrics', ha='center',
+            fontsize=14, color=SUCCESS_COLOR, fontweight='bold')
     
-    plt.suptitle('Final Results Breakdown (test44 - 80 samples)', 
-                 fontsize=20, fontweight='bold', y=1.02)
-    
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0.05, 1, 0.93])
     plt.savefig('presentation/graphs/05_final_results_chart.png', dpi=150,
                 facecolor=BACKGROUND_COLOR, edgecolor='none', bbox_inches='tight')
     plt.close()
@@ -442,6 +491,498 @@ def create_architecture_diagram():
     print("✅ Created: 06_architecture_diagram.png")
 
 # ============================================================================
+# Graph 7: Confusion Matrix Heatmap (Improved)
+# ============================================================================
+
+def create_confusion_matrix():
+    """Create a clean, professional confusion matrix."""
+    import json
+    
+    # Load results from eval_results_fast.json
+    with open('eval_results_fast.json', 'r') as f:
+        data = json.load(f)
+    
+    results = data['results']
+    
+    # Calculate confusion matrix values
+    tp = sum(1 for r in results if r['true'] == 'contradict' and r['pred'] == 'contradict')  # True Positive
+    tn = sum(1 for r in results if r['true'] == 'consistent' and r['pred'] == 'consistent')  # True Negative
+    fp = sum(1 for r in results if r['true'] == 'consistent' and r['pred'] == 'contradict')  # False Positive
+    fn = sum(1 for r in results if r['true'] == 'contradict' and r['pred'] == 'consistent')  # False Negative
+    
+    # Calculate metrics
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+    accuracy = (tp + tn) / (tp + tn + fp + fn)
+    
+    fig, (ax_matrix, ax_metrics) = plt.subplots(1, 2, figsize=(14, 7), 
+                                                 gridspec_kw={'width_ratios': [1.2, 1]})
+    
+    # Left side: Confusion Matrix with custom colors
+    # Use green for correct (diagonal), red for errors (off-diagonal)
+    cell_colors = [
+        [SUCCESS_COLOR, PRIMARY_COLOR],  # Row 0: TN (correct), FP (error)
+        [PRIMARY_COLOR, SUCCESS_COLOR]   # Row 1: FN (error), TP (correct)
+    ]
+    
+    # Draw cells manually for better control
+    cell_values = [[tn, fp], [fn, tp]]
+    cell_labels = [['True Negative', 'False Positive'], ['False Negative', 'True Positive']]
+    
+    for i in range(2):
+        for j in range(2):
+            # Draw rectangle
+            rect = mpatches.Rectangle((j-0.5, i-0.5), 1, 1, 
+                                  facecolor=cell_colors[i][j], alpha=0.7,
+                                  edgecolor=TEXT_COLOR, linewidth=3)
+            ax_matrix.add_patch(rect)
+            
+            # Add count (large)
+            ax_matrix.text(j, i, f'{cell_values[i][j]}', ha='center', va='center',
+                          fontsize=48, fontweight='bold', color=TEXT_COLOR)
+            
+            # Add label (small, below count)
+            ax_matrix.text(j, i+0.35, cell_labels[i][j], ha='center', va='center',
+                          fontsize=10, color=TEXT_COLOR, alpha=0.8)
+    
+    ax_matrix.set_xlim(-0.5, 1.5)
+    ax_matrix.set_ylim(-0.5, 1.5)
+    ax_matrix.set_xticks([0, 1])
+    ax_matrix.set_yticks([0, 1])
+    ax_matrix.set_xticklabels(['Consistent', 'Contradict'], fontsize=14, fontweight='bold')
+    ax_matrix.set_yticklabels(['Consistent', 'Contradict'], fontsize=14, fontweight='bold')
+    ax_matrix.set_xlabel('PREDICTED', fontsize=16, fontweight='bold', labelpad=15)
+    ax_matrix.set_ylabel('ACTUAL', fontsize=16, fontweight='bold', labelpad=15)
+    ax_matrix.invert_yaxis()
+    
+    # Right side: Metrics display
+    ax_metrics.axis('off')
+    
+    # Title for metrics
+    ax_metrics.text(0.5, 0.95, 'Performance Metrics', ha='center', va='top',
+                   fontsize=18, fontweight='bold', color=TEXT_COLOR, transform=ax_metrics.transAxes)
+    
+    # Metrics with visual bars
+    metrics = [
+        ('Accuracy', accuracy, TEXT_COLOR),
+        ('Precision', precision, PRIMARY_COLOR),
+        ('Recall', recall, SECONDARY_COLOR),
+        ('F1 Score', f1, SUCCESS_COLOR),
+    ]
+    
+    y_start = 0.78
+    bar_height = 0.08
+    spacing = 0.18
+    
+    for i, (name, value, color) in enumerate(metrics):
+        y_pos = y_start - i * spacing
+        
+        # Metric name and value
+        ax_metrics.text(0.05, y_pos + 0.04, name, ha='left', va='center',
+                       fontsize=14, fontweight='bold', color=TEXT_COLOR, transform=ax_metrics.transAxes)
+        ax_metrics.text(0.95, y_pos + 0.04, f'{value:.1%}', ha='right', va='center',
+                       fontsize=14, fontweight='bold', color=color, transform=ax_metrics.transAxes)
+        
+        # Progress bar background
+        bar_bg = mpatches.Rectangle((0.05, y_pos - 0.02), 0.9, bar_height,
+                               facecolor=GRID_COLOR, transform=ax_metrics.transAxes)
+        ax_metrics.add_patch(bar_bg)
+        
+        # Progress bar fill
+        bar_fill = mpatches.Rectangle((0.05, y_pos - 0.02), 0.9 * value, bar_height,
+                                 facecolor=color, alpha=0.8, transform=ax_metrics.transAxes)
+        ax_metrics.add_patch(bar_fill)
+    
+    # Summary box at bottom
+    summary_y = 0.12
+    ax_metrics.text(0.5, summary_y, f'Total Samples: 80', ha='center', va='center',
+                   fontsize=12, color=TEXT_COLOR, transform=ax_metrics.transAxes)
+    ax_metrics.text(0.5, summary_y - 0.08, f'Correct: {tn + tp} | Wrong: {fp + fn}', ha='center', va='center',
+                   fontsize=12, color=ACCENT_COLOR, transform=ax_metrics.transAxes)
+    
+    plt.suptitle('Confusion Matrix Analysis (test46)', fontsize=22, fontweight='bold', y=0.98)
+    plt.tight_layout()
+    plt.savefig('presentation/graphs/07_confusion_matrix.png', dpi=150,
+                facecolor=BACKGROUND_COLOR, edgecolor='none', bbox_inches='tight')
+    plt.close()
+    print("✅ Created: 07_confusion_matrix.png")
+
+# ============================================================================
+# Graph 8: Error Analysis Bar Chart
+# ============================================================================
+
+def create_error_analysis():
+    """Create a bar chart showing types of errors."""
+    import json
+    
+    with open('eval_results_fast.json', 'r') as f:
+        data = json.load(f)
+    
+    results = data['results']
+    
+    # Count error types
+    false_positives = sum(1 for r in results if r['true'] == 'consistent' and r['pred'] == 'contradict')
+    false_negatives = sum(1 for r in results if r['true'] == 'contradict' and r['pred'] == 'consistent')
+    correct_consistent = sum(1 for r in results if r['true'] == 'consistent' and r['pred'] == 'consistent')
+    correct_contradict = sum(1 for r in results if r['true'] == 'contradict' and r['pred'] == 'contradict')
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    
+    # Left: Error breakdown
+    categories = ['False Positives\n(Said contradict,\nwas consistent)', 
+                  'False Negatives\n(Said consistent,\nwas contradict)']
+    errors = [false_positives, false_negatives]
+    colors = [SECONDARY_COLOR, PRIMARY_COLOR]
+    
+    bars = ax1.barh(categories, errors, color=colors, edgecolor=TEXT_COLOR, linewidth=2, height=0.6)
+    
+    for bar, val in zip(bars, errors):
+        ax1.text(val + 0.5, bar.get_y() + bar.get_height()/2, f'{val}', 
+                va='center', fontsize=16, fontweight='bold', color=TEXT_COLOR)
+    
+    ax1.set_xlabel('Number of Errors', fontsize=14, fontweight='bold')
+    ax1.set_title('Error Type Breakdown', fontsize=16, fontweight='bold')
+    ax1.set_xlim(0, max(errors) + 5)
+    ax1.grid(True, alpha=0.3, axis='x')
+    
+    # Right: Correct vs Wrong pie chart
+    sizes = [correct_consistent + correct_contradict, false_positives + false_negatives]
+    labels = [f'Correct\n({sizes[0]})', f'Wrong\n({sizes[1]})']
+    colors_pie = [SUCCESS_COLOR, PRIMARY_COLOR]
+    explode = (0.05, 0.05)
+    
+    wedges, texts, autotexts = ax2.pie(sizes, explode=explode, labels=labels, colors=colors_pie,
+                                        autopct='%1.1f%%', startangle=90,
+                                        wedgeprops=dict(edgecolor=TEXT_COLOR, linewidth=2),
+                                        textprops=dict(color=TEXT_COLOR, fontsize=12, fontweight='bold'))
+    ax2.set_title('Overall Predictions', fontsize=16, fontweight='bold')
+    
+    plt.suptitle('Error Analysis (test46 - 80 samples)', fontsize=20, fontweight='bold', y=1.02)
+    plt.tight_layout()
+    plt.savefig('presentation/graphs/08_error_analysis.png', dpi=150,
+                facecolor=BACKGROUND_COLOR, edgecolor='none', bbox_inches='tight')
+    plt.close()
+    print("✅ Created: 08_error_analysis.png")
+
+# ============================================================================
+# Graph 9: Per-Book Performance
+# ============================================================================
+
+def create_per_book_performance():
+    """Create a chart comparing performance across different books."""
+    import json
+    import pandas as pd
+    
+    # Load results and train data
+    with open('eval_results_fast.json', 'r') as f:
+        data = json.load(f)
+    
+    train_df = pd.read_csv('Dataset/train.csv')
+    
+    results = data['results']
+    result_ids = {r['id']: r for r in results}
+    
+    # Calculate per-book performance
+    books = {}
+    for _, row in train_df.iterrows():
+        if row['id'] in result_ids:
+            book = row['book_name']
+            if book not in books:
+                books[book] = {'correct': 0, 'total': 0, 'consistent_correct': 0, 'consistent_total': 0,
+                              'contradict_correct': 0, 'contradict_total': 0}
+            
+            r = result_ids[row['id']]
+            books[book]['total'] += 1
+            if r['correct']:
+                books[book]['correct'] += 1
+            
+            if r['true'] == 'consistent':
+                books[book]['consistent_total'] += 1
+                if r['correct']:
+                    books[book]['consistent_correct'] += 1
+            else:
+                books[book]['contradict_total'] += 1
+                if r['correct']:
+                    books[book]['contradict_correct'] += 1
+    
+    fig, ax = plt.subplots(figsize=(12, 7))
+    
+    book_names = list(books.keys())
+    x = np.arange(len(book_names))
+    width = 0.25
+    
+    overall_acc = [books[b]['correct']/books[b]['total']*100 for b in book_names]
+    consistent_acc = [books[b]['consistent_correct']/books[b]['consistent_total']*100 if books[b]['consistent_total'] > 0 else 0 for b in book_names]
+    contradict_acc = [books[b]['contradict_correct']/books[b]['contradict_total']*100 if books[b]['contradict_total'] > 0 else 0 for b in book_names]
+    
+    bars1 = ax.bar(x - width, overall_acc, width, label='Overall', color=TEXT_COLOR, edgecolor='white', linewidth=2)
+    bars2 = ax.bar(x, consistent_acc, width, label='Consistent', color=PRIMARY_COLOR, edgecolor='white', linewidth=2)
+    bars3 = ax.bar(x + width, contradict_acc, width, label='Contradict', color=SECONDARY_COLOR, edgecolor='white', linewidth=2)
+    
+    # Add value labels
+    for bars in [bars1, bars2, bars3]:
+        for bar in bars:
+            height = bar.get_height()
+            ax.annotate(f'{height:.1f}%',
+                        xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=11, fontweight='bold')
+    
+    # Add sample counts
+    for i, book in enumerate(book_names):
+        ax.text(i, -8, f'n={books[book]["total"]}', ha='center', fontsize=10, color=ACCENT_COLOR)
+    
+    ax.axhline(y=60, color=SUCCESS_COLOR, linestyle='--', linewidth=2, alpha=0.7, label='60% Target')
+    
+    ax.set_xlabel('Book', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Accuracy (%)', fontsize=14, fontweight='bold')
+    ax.set_title('Performance by Source Book', fontsize=18, fontweight='bold', pad=20)
+    ax.set_xticks(x)
+    ax.set_xticklabels([b.replace(' ', '\n') for b in book_names], fontsize=11)
+    ax.set_ylim(0, 100)
+    ax.legend(loc='upper right', fontsize=11)
+    ax.grid(True, alpha=0.3, axis='y')
+    
+    plt.tight_layout()
+    plt.savefig('presentation/graphs/09_per_book_performance.png', dpi=150,
+                facecolor=BACKGROUND_COLOR, edgecolor='none', bbox_inches='tight')
+    plt.close()
+    print("✅ Created: 09_per_book_performance.png")
+
+# ============================================================================
+# Graph 10: Class Distribution & Performance
+# ============================================================================
+
+def create_class_distribution():
+    """Show the class imbalance and how we handled it."""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    
+    # Left: Class distribution in dataset
+    consistent_count = 51
+    contradict_count = 29
+    
+    colors = [PRIMARY_COLOR, SECONDARY_COLOR]
+    sizes = [consistent_count, contradict_count]
+    labels = [f'Consistent\n({consistent_count})', f'Contradict\n({contradict_count})']
+    explode = (0.02, 0.02)
+    
+    wedges, texts, autotexts = ax1.pie(sizes, explode=explode, labels=labels, colors=colors,
+                                        autopct='%1.1f%%', startangle=90,
+                                        wedgeprops=dict(edgecolor=TEXT_COLOR, linewidth=2),
+                                        textprops=dict(color=TEXT_COLOR, fontsize=12, fontweight='bold'))
+    ax1.set_title('Dataset Class Distribution\n(Imbalanced)', fontsize=16, fontweight='bold')
+    
+    # Right: Our balanced performance
+    categories = ['Consistent\n(51 samples)', 'Contradict\n(29 samples)']
+    accuracies = [68.6, 62.1]
+    colors_bar = [PRIMARY_COLOR, SECONDARY_COLOR]
+    
+    bars = ax2.bar(categories, accuracies, color=colors_bar, edgecolor=TEXT_COLOR, linewidth=2, width=0.6)
+    
+    for bar, acc in zip(bars, accuracies):
+        ax2.annotate(f'{acc:.1f}%',
+                    xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
+                    xytext=(0, 5), textcoords="offset points",
+                    ha='center', va='bottom', fontsize=18, fontweight='bold')
+    
+    ax2.axhline(y=60, color=SUCCESS_COLOR, linestyle='--', linewidth=2, alpha=0.7)
+    ax2.text(1.5, 61, '60% Target', fontsize=10, color=SUCCESS_COLOR)
+    
+    ax2.set_ylabel('Accuracy (%)', fontsize=14, fontweight='bold')
+    ax2.set_title('Our Balanced Performance\n(Both Above 60%!)', fontsize=16, fontweight='bold')
+    ax2.set_ylim(0, 85)
+    ax2.grid(True, alpha=0.3, axis='y')
+    
+    plt.suptitle('Handling Class Imbalance', fontsize=20, fontweight='bold', y=1.02)
+    plt.tight_layout()
+    plt.savefig('presentation/graphs/10_class_distribution.png', dpi=150,
+                facecolor=BACKGROUND_COLOR, edgecolor='none', bbox_inches='tight')
+    plt.close()
+    print("✅ Created: 10_class_distribution.png")
+
+# ============================================================================
+# Graph 11: LLM Stats (Improved)
+# ============================================================================
+
+def create_llm_stats():
+    """Create a clean, professional LLM statistics dashboard."""
+    import json
+    
+    with open('eval_results_fast.json', 'r') as f:
+        data = json.load(f)
+    
+    stats = data['llm_stats']
+    
+    # Calculate derived stats
+    total_samples = 80
+    calls_per_sample = stats['call_count'] / total_samples
+    minutes = stats['total_time'] / 60
+    per_sample = stats['total_time'] / total_samples
+    
+    fig = plt.figure(figsize=(14, 8))
+    
+    # Create grid layout
+    gs = fig.add_gridspec(2, 3, hspace=0.3, wspace=0.3)
+    
+    # Top row: 3 main stats with circular progress indicators
+    stat_data = [
+        {'value': stats['call_count'], 'label': 'API Calls', 'sublabel': f'{calls_per_sample:.1f} per sample', 'color': PRIMARY_COLOR},
+        {'value': f"{stats['avg_time']:.2f}s", 'label': 'Avg Response', 'sublabel': 'per LLM call', 'color': SECONDARY_COLOR},
+        {'value': f"{per_sample:.1f}s", 'label': 'Per Backstory', 'sublabel': f'{minutes:.1f} min total', 'color': SUCCESS_COLOR},
+    ]
+    
+    for i, stat in enumerate(stat_data):
+        ax = fig.add_subplot(gs[0, i])
+        ax.set_xlim(-1.5, 1.5)
+        ax.set_ylim(-1.5, 1.5)
+        ax.set_aspect('equal')
+        ax.axis('off')
+        
+        # Draw outer ring
+        circle_outer = mpatches.Circle((0, 0), 1.2, fill=False, 
+                                   edgecolor=stat['color'], linewidth=6, alpha=0.3)
+        ax.add_patch(circle_outer)
+        
+        # Draw progress arc (decorative)
+        theta = np.linspace(0, 2*np.pi*0.75, 100)
+        x = 1.2 * np.cos(theta - np.pi/2)
+        y = 1.2 * np.sin(theta - np.pi/2)
+        ax.plot(x, y, color=stat['color'], linewidth=6, solid_capstyle='round')
+        
+        # Inner circle background
+        circle_inner = mpatches.Circle((0, 0), 0.95, facecolor=BACKGROUND_COLOR, 
+                                   edgecolor=stat['color'], linewidth=2)
+        ax.add_patch(circle_inner)
+        
+        # Value text
+        ax.text(0, 0.1, str(stat['value']), ha='center', va='center',
+               fontsize=32, fontweight='bold', color=TEXT_COLOR)
+        
+        # Label text
+        ax.text(0, -0.35, stat['label'], ha='center', va='center',
+               fontsize=14, fontweight='bold', color=stat['color'])
+        
+        # Sublabel
+        ax.text(0, -1.45, stat['sublabel'], ha='center', va='center',
+               fontsize=11, color=ACCENT_COLOR)
+    
+    # Bottom row: Summary bar
+    ax_summary = fig.add_subplot(gs[1, :])
+    ax_summary.set_xlim(0, 10)
+    ax_summary.set_ylim(0, 2)
+    ax_summary.axis('off')
+    
+    # Summary background box
+    summary_rect = mpatches.FancyBboxPatch(
+        (0.2, 0.3), 9.6, 1.4,
+        boxstyle="round,pad=0.05,rounding_size=0.2",
+        facecolor=BACKGROUND_COLOR, edgecolor=PRIMARY_COLOR, linewidth=2
+    )
+    ax_summary.add_patch(summary_rect)
+    
+    # Summary title
+    ax_summary.text(5, 1.45, 'Pipeline Efficiency Summary', ha='center', va='center',
+                   fontsize=16, fontweight='bold', color=TEXT_COLOR)
+    
+    # Summary stats in a row
+    summary_items = [
+        (f"Model: llama-3.1-8b", 1.5),
+        (f"Errors: {stats['errors']}", 3.5),
+        (f"Samples: {total_samples}", 5.5),
+        (f"Total Time: {minutes:.1f} min", 7.5),
+    ]
+    
+    for text, x_pos in summary_items:
+        ax_summary.text(x_pos, 0.85, text, ha='center', va='center',
+                       fontsize=13, color=TEXT_COLOR)
+    
+    # Efficiency indicator
+    efficiency = 100 - (stats['errors'] / stats['call_count'] * 100) if stats['call_count'] > 0 else 100
+    ax_summary.text(5, 0.45, f"Success Rate: {efficiency:.1f}%", ha='center', va='center',
+                   fontsize=14, fontweight='bold', color=SUCCESS_COLOR)
+    
+    plt.suptitle('LLM Performance Dashboard', fontsize=22, fontweight='bold', y=0.98)
+    plt.tight_layout()
+    plt.savefig('presentation/graphs/11_llm_stats.png', dpi=150,
+                facecolor=BACKGROUND_COLOR, edgecolor='none', bbox_inches='tight')
+    plt.close()
+    print("✅ Created: 11_llm_stats.png")
+
+# ============================================================================
+# Graph 12: Journey Summary Infographic
+# ============================================================================
+
+def create_journey_summary():
+    """Create a summary infographic of the entire journey."""
+    fig, ax = plt.subplots(figsize=(16, 10))
+    ax.set_xlim(0, 16)
+    ax.set_ylim(0, 10)
+    ax.axis('off')
+    
+    # Title
+    ax.text(8, 9.5, 'The Journey to 60%+ on Both Classes', ha='center', va='center',
+            fontsize=28, fontweight='bold', color=TEXT_COLOR)
+    ax.text(8, 8.8, '46 experiments • 14 major changes • 1 goal achieved', ha='center', va='center',
+            fontsize=14, color=ACCENT_COLOR)
+    
+    # Key milestones boxes
+    milestones = [
+        {'pos': (1, 6), 'title': 'START', 'value': '52.5%', 'subtitle': 'test6', 'color': '#ff4444'},
+        {'pos': (4.5, 6), 'title': 'CRISIS', 'value': '0%', 'subtitle': '0% contradict!', 'color': PRIMARY_COLOR},
+        {'pos': (8, 6), 'title': 'BREAKTHROUGH', 'value': '72.5%', 'subtitle': 'Both >60%', 'color': '#ffaa00'},
+        {'pos': (11.5, 6), 'title': 'FAILED', 'value': '44.8%', 'subtitle': 'Aggressive backfired', 'color': PRIMARY_COLOR},
+        {'pos': (15, 6), 'title': 'GOAL!', 'value': '62.1%', 'subtitle': 'Both above 60%!', 'color': SUCCESS_COLOR},
+    ]
+    
+    for m in milestones:
+        rect = mpatches.FancyBboxPatch(
+            (m['pos'][0]-1.2, m['pos'][1]-1.2), 2.4, 2.4,
+            boxstyle="round,pad=0.05,rounding_size=0.3",
+            facecolor=BACKGROUND_COLOR, edgecolor=m['color'], linewidth=3
+        )
+        ax.add_patch(rect)
+        ax.text(m['pos'][0], m['pos'][1]+0.7, m['title'], ha='center', va='center',
+                fontsize=12, fontweight='bold', color=m['color'])
+        ax.text(m['pos'][0], m['pos'][1], m['value'], ha='center', va='center',
+                fontsize=24, fontweight='bold', color=TEXT_COLOR)
+        ax.text(m['pos'][0], m['pos'][1]-0.7, m['subtitle'], ha='center', va='center',
+                fontsize=10, color=ACCENT_COLOR)
+    
+    # Arrows between milestones
+    for i in range(len(milestones)-1):
+        ax.annotate('', xy=(milestones[i+1]['pos'][0]-1.4, milestones[i+1]['pos'][1]),
+                   xytext=(milestones[i]['pos'][0]+1.4, milestones[i]['pos'][1]),
+                   arrowprops=dict(arrowstyle='->', color=GRID_COLOR, lw=2))
+    
+    # Key learnings box
+    learnings = [
+        "✓ Balance is key - too aggressive or conservative both fail",
+        "✓ Detective mindset: 'Precise but not assumptional'",
+        "✓ Failed experiments teach valuable lessons",
+        "✓ Iterative improvement beats one-shot solutions",
+    ]
+    
+    y_start = 3
+    ax.text(8, y_start + 0.8, 'Key Learnings', ha='center', fontsize=16, fontweight='bold', color=PRIMARY_COLOR)
+    for i, learning in enumerate(learnings):
+        ax.text(8, y_start - i*0.6, learning, ha='center', fontsize=12, color=TEXT_COLOR)
+    
+    # Final stats box
+    ax.add_patch(mpatches.FancyBboxPatch((5.5, 0.3), 5, 1.2, boxstyle="round,pad=0.1",
+                                          facecolor=BACKGROUND_COLOR, edgecolor=SUCCESS_COLOR, linewidth=3))
+    ax.text(8, 1.1, 'FINAL: 68.6% Consistent | 62.1% Contradict | 66.2% Overall', 
+            ha='center', va='center', fontsize=14, fontweight='bold', color=SUCCESS_COLOR)
+    ax.text(8, 0.6, 'Both classes above 60% target!', ha='center', va='center',
+            fontsize=12, color=TEXT_COLOR)
+    
+    plt.tight_layout()
+    plt.savefig('presentation/graphs/12_journey_summary.png', dpi=150,
+                facecolor=BACKGROUND_COLOR, edgecolor='none', bbox_inches='tight')
+    plt.close()
+    print("✅ Created: 12_journey_summary.png")
+
+# ============================================================================
 # Main execution
 # ============================================================================
 
@@ -454,13 +995,13 @@ if __name__ == '__main__':
     print("🎨 Generating presentation graphs...")
     print("=" * 50)
     
+    # Generate selected graphs
     create_progress_chart()
-    create_balance_chart()
-    create_comparison_chart()
-    create_timeline_chart()
     create_final_results_chart()
-    create_architecture_diagram()
+    create_confusion_matrix()
+    create_llm_stats()
+    print("✅ Created: 11_llm_stats.png")
     
     print("=" * 50)
-    print("✅ All graphs generated successfully!")
+    print("✅ Selected graphs (1, 5, 7, 11) generated successfully!")
     print("📁 Output folder: presentation/graphs/")

@@ -5,10 +5,10 @@ Generates beautiful graphs showing our iterative improvement journey.
 Run: python presentation/generate_graphs.py
 """
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt # type: ignore
+import matplotlib.patches as mpatches # type: ignore
 import numpy as np
-from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import MaxNLocator # type: ignore
 
 # ============================================================================
 # Style Configuration - Black background with red (#e10600) accent

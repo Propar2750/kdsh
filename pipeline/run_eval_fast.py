@@ -146,25 +146,46 @@ def main():
     # For test mode, run predictions without evaluation
     if args.test:
         results = []
+        total = len(samples) if not args.max_samples else min(args.max_samples, len(samples))
         for i, sample in enumerate(samples):
             if args.max_samples and i >= args.max_samples:
                 break
-            print(f"\n[{i+1}/{len(samples) if not args.max_samples else min(args.max_samples, len(samples))}] Sample {sample['id']} - {sample['char']}")
-            prediction, _ = pipeline.verify_backstory(
-                backstory=sample['content'],
-                character=sample['char'],
-                book_name=sample['book_name'],
-                sample_id=sample['id'],
-                verbose=args.verbose,
-                save_results=False
-            )
-            results.append({'id': sample['id'], 'prediction': prediction})
+            print(f"\n[{i+1}/{total}] Sample {sample['id']} - {sample['char']}")
+            try:
+                prediction, details = pipeline.verify_backstory(
+                    backstory=sample['content'],
+                    character=sample['char'],
+                    book_name=sample['book_name'],
+                    sample_id=sample['id'],
+                    verbose=args.verbose,
+                    save_results=True
+                )
+                # Build rationale with cited evidence
+                rationale = details.get('explanation', details.get('reason', 'No rationale available'))
+                results.append({
+                    'id': sample['id'],
+                    'prediction': prediction,
+                    'rationale': rationale
+                })
+                print(f"   → Prediction: {'CONSISTENT' if prediction == 1 else 'CONTRADICT'}")
+            except Exception as e:
+                print(f"   Error: {e}")
+                # Default to consistent on error
+                results.append({
+                    'id': sample['id'],
+                    'prediction': 1,
+                    'rationale': f'Error during verification: {str(e)}'
+                })
         
-        # Save submission CSV
+        # Save submission CSV with id, prediction, rationale
         results_df = pd.DataFrame(results)
         results_df.to_csv(args.out, index=False)
         print(f"\n{'='*60}")
-        print(f"Submission saved to: {args.out}")
+        print(f"SUBMISSION COMPLETE")
+        print(f"{'='*60}")
+        print(f"Output: {args.out}")
+        print(f"Samples: {len(results)}")
+        print(f"Columns: id, prediction, rationale")
         print(f"{'='*60}")
         return 0
     

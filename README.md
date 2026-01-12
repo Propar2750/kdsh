@@ -112,6 +112,21 @@ docker-compose run --rm pipeline python -m pipeline.run_eval_fast --test --out r
 docker-compose run --rm pipeline python -m pipeline.run_eval_fast --test --input-dir /app/Dataset --out results.csv
 ```
 
+The output `results.csv` contains:
+
+| Column | Description |
+|--------|-------------|
+| `id` | Sample ID from test.csv |
+| `prediction` | 1 (consistent) or 0 (contradict) |
+| `rationale` | Explanation with cited evidence from the source text |
+
+**Example output:**
+```csv
+id,prediction,rationale
+95,1,"PREDICTION: CONSISTENT\nREASON: Consistent (3 supports, 1 unclear)\n\nSupports: 3 | Unclear: 1 | Contradicts: 0"
+96,0,"PREDICTION: CONTRADICT\nREASON: Strong contradiction (claim 2)\n\nClaim: \"Villefort imprisoned Dantès...\"\nConfidence: 0.92\nCitation: \"The king's attorney had seen the door of his cabinet...\""
+```
+
 > **Note:** This pipeline requires Docker to run. Pathway and other dependencies are configured specifically for the Docker environment.
 
 ## Project Structure

@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-01-12T08:13:39.393125",
+  "accuracy": 0.5,
+  "correct": 1,
+  "total": 2,
+  "llm_stats": {
+    "call_count": 0,
+    "total_time": 0.0,
+    "avg_time": 0.0,
+    "errors": 0
+  },
+  "results": [
+    {
+      "id": 46,
+      "true": "consistent",
+      "pred": "consistent",
+      "correct": true
+    },
+    {
+      "id": 137,
+      "true": "contradict",
+      "pred": "consistent",
+      "correct": false
+    }
+  ]
+}

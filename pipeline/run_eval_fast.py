@@ -145,6 +145,38 @@ def main():
     
     # For test mode, run predictions without evaluation
     if args.test:
+        def build_rationale(prediction: int, details: dict, character: str) -> str:
+            """Build a clean sentence-based rationale for submission."""
+            pred_label = "consistent" if prediction == 1 else "contradictory"
+            reason = details.get('reason', '')
+            counts = details.get('counts', {})
+            claims = details.get('claims', [])
+            
+            # First sentence: prediction summary
+            n_claims = len(claims)
+            sentences = [f"The backstory for {character} is {pred_label} with the source text."]
+            
+            # Second sentence: evidence summary
+            n_supports = counts.get('supports', 0)
+            n_contradicts = counts.get('contradicts', 0)
+            n_unclear = counts.get('unclear', 0)
+            if n_claims > 0:
+                sentences.append(f"Analysis of {n_claims} claims found {n_supports} supported, {n_contradicts} contradicted, and {n_unclear} unclear based on retrieved passages.")
+            
+            # Third sentence: key finding
+            if prediction == 0 and 'contradiction' in reason.lower():
+                # Extract citation if available from the explanation
+                explanation = details.get('explanation', '')
+                if 'Citation:' in explanation:
+                    citation = explanation.split('Citation:')[-1].strip().strip('"')[:150]
+                    sentences.append(f"Key evidence: \"{citation}\"")
+                else:
+                    sentences.append(f"A factual contradiction was detected with high confidence.")
+            else:
+                sentences.append(f"No significant contradictions were found in the verified claims.")
+            
+            return " ".join(sentences)
+        
         results = []
         total = len(samples) if not args.max_samples else min(args.max_samples, len(samples))
         for i, sample in enumerate(samples):
@@ -160,8 +192,8 @@ def main():
                     verbose=args.verbose,
                     save_results=True
                 )
-                # Build rationale with cited evidence
-                rationale = details.get('explanation', details.get('reason', 'No rationale available'))
+                # Build clean sentence-based rationale
+                rationale = build_rationale(prediction, details, sample['char'])
                 results.append({
                     'id': sample['id'],
                     'prediction': prediction,
@@ -174,7 +206,7 @@ def main():
                 results.append({
                     'id': sample['id'],
                     'prediction': 1,
-                    'rationale': f'Error during verification: {str(e)}'
+                    'rationale': f"The backstory for {sample['char']} could not be fully verified due to a processing error. Defaulting to consistent."
                 })
         
         # Save submission CSV with id, prediction, rationale

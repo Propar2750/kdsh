@@ -118,13 +118,13 @@ The output `results.csv` contains:
 |--------|-------------|
 | `id` | Sample ID from test.csv |
 | `prediction` | 1 (consistent) or 0 (contradict) |
-| `rationale` | Explanation with cited evidence from the source text |
+| `rationale` | A 3-sentence explanation with cited evidence |
 
 **Example output:**
 ```csv
 id,prediction,rationale
-95,1,"PREDICTION: CONSISTENT\nREASON: Consistent (3 supports, 1 unclear)\n\nSupports: 3 | Unclear: 1 | Contradicts: 0"
-96,0,"PREDICTION: CONTRADICT\nREASON: Strong contradiction (claim 2)\n\nClaim: \"Villefort imprisoned Dantès...\"\nConfidence: 0.92\nCitation: \"The king's attorney had seen the door of his cabinet...\""
+95,1,"The backstory for Edmond Dantès is consistent with the source text. Analysis of 4 claims found 3 supported, 0 contradicted, and 1 unclear based on retrieved passages. No significant contradictions were found in the verified claims."
+96,0,"The backstory for Villefort is contradictory with the source text. Analysis of 3 claims found 1 supported, 1 contradicted, and 1 unclear based on retrieved passages. Key evidence: ""The prisoner was taken to the Chateau d'If, not to Paris as claimed."""
 ```
 
 > **Note:** This pipeline requires Docker to run. Pathway and other dependencies are configured specifically for the Docker environment.

@@ -6,6 +6,7 @@ services:
     working_dir: /app
     environment:
       - GROQ_API_KEY=${GROQ_API_KEY}
+      - PYTHONUNBUFFERED=1
     command: python -m pipeline.run_eval_fast --max-samples 5
 
   # GPU-enabled version (use: docker-compose run --rm pipeline-gpu ...)
@@ -16,6 +17,7 @@ services:
     working_dir: /app
     environment:
       - GROQ_API_KEY=${GROQ_API_KEY}
+      - PYTHONUNBUFFERED=1
     command: python -m pipeline.run_eval_fast --max-samples 5
     deploy:
       resources:

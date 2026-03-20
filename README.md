@@ -1,6 +1,6 @@
 # Fictional Character Backstory Verification
 
-A RAG (Retrieval-Augmented Generation) pipeline that detects whether a fictional character's backstory is **consistent with** or **contradicts** the source novel. Built for [KDSH 2026 Track A](https://www.kdsh.tech/) (Kharagpur Data Science Hackathon).
+A RAG (Retrieval-Augmented Generation) pipeline that detects whether a fictional character's backstory is **consistent with** or **contradicts** the source novel. Built for [KDSH 2026 Track A](https://unstop.com/hackathons/kharagpur-data-science-hackathon-2026-iit-kharagpur-1614844) (Kharagpur Data Science Hackathon).
 
 > **Team:** nan_sense
 

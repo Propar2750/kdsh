@@ -4,15 +4,23 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
-venv/
-.venv/
 *.egg-info/
 dist/
 build/
+*.egg
+
+# Virtual environments
+env/
+venv/
+.venv/
+ENV/
 
 # Pytest
 .pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
 
 # Jupyter
 .ipynb_checkpoints/
@@ -22,12 +30,33 @@ build/
 .idea/
 *.swp
 *.swo
+*~
+.project
+.settings/
 
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
+ehthumbs.db
 
 # Project specific
 *.log
 results.csv
 verification_results/
+eval_results_fast.json
+
+# Cache
+.cache/
+
+# Docker
+*.pid
+
+# Environment & secrets
+.env
+.env.*
+*.key
+*.pem
+
+# Claude Code
+CLAUDE.md
